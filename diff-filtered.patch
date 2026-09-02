@@ -1,0 +1,482 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..5ef6a52
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,41 @@
++# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
++
++# dependencies
++/node_modules
++/.pnp
++.pnp.*
++.yarn/*
++!.yarn/patches
++!.yarn/plugins
++!.yarn/releases
++!.yarn/versions
++
++# testing
++/coverage
++
++# next.js
++/.next/
++/out/
++
++# production
++/build
++
++# misc
++.DS_Store
++*.pem
++
++# debug
++npm-debug.log*
++yarn-debug.log*
++yarn-error.log*
++.pnpm-debug.log*
++
++# env files (can opt-in for committing if needed)
++.env*
++
++# vercel
++.vercel
++
++# typescript
++*.tsbuildinfo
++next-env.d.ts
+diff --git a/AGENTS.md b/AGENTS.md
+index 6a527d8..643577d 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,13 +1,9 @@
+-## Agent skills
++<!-- BEGIN:nextjs-agent-rules -->
+ 
+-### Issue tracker
++# This is NOT the Next.js you know
+ 
+-Issues and specs for this repo live as GitHub issues. See `docs/agents/issue-tracker.md`.
++This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+ 
+-### Triage labels
++This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+ 
+-Using standard triage labels. See `docs/agents/triage-labels.md`.
+-
+-### Domain docs
+-
+-Single-context repo configuration. See `docs/agents/domain.md`.
++<!-- END:nextjs-agent-rules -->
+diff --git a/CLAUDE.md b/CLAUDE.md
+new file mode 100644
+index 0000000..43c994c
+--- /dev/null
++++ b/CLAUDE.md
+@@ -0,0 +1 @@
++@AGENTS.md
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..e215bc4
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,36 @@
++This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
++
++## Getting Started
++
++First, run the development server:
++
++```bash
++npm run dev
++# or
++yarn dev
++# or
++pnpm dev
++# or
++bun dev
++```
++
++Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
++
++You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
++
++This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
++
++## Learn More
++
++To learn more about Next.js, take a look at the following resources:
++
++- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
++- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
++
++You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
++
++## Deploy on Vercel
++
++The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
++
++Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+diff --git a/create_tickets.sh b/create_tickets.sh
+new file mode 100755
+index 0000000..5d2c432
+--- /dev/null
++++ b/create_tickets.sh
+@@ -0,0 +1,94 @@
++#!/bin/bash
++T1=$(gh issue create --title "1. Autenticação e Dashboard Inicial" --body "## Parent
++#1
++
++## What to build
++Configuração do Next.js (App Router), Tailwind e NextAuth.js com o Google Provider (pedindo escopo de Calendar e Tasks). O usuário consegue fazer login e vê um painel vazio protegido.
++
++## Acceptance criteria
++- [ ] Next.js app running with Tailwind
++- [ ] NextAuth.js configured with Google OAuth
++- [ ] Unauthenticated users are redirected to login
++- [ ] Authenticated users see an empty dashboard
++
++## Blocked by
++None (can start immediately)" --label "ready-for-agent" | awk -F'/' '{print $NF}')
++echo "Created Ticket 1: #$T1"
++
++T2=$(gh issue create --title "2. Visualizador do Calendário (Google Calendar + Grid)" --body "## Parent
++#1
++
++## What to build
++Conecta à API do Google Calendar para buscar os eventos do usuário. Renderiza a interface do react-big-calendar (estilizada com Tailwind) e exibe os eventos reais do usuário na grade.
++
++## Acceptance criteria
++- [ ] Fetch events from Google Calendar API
++- [ ] Render react-big-calendar grid
++- [ ] Display Google Calendar events on the grid
++
++## Blocked by
++- #$T1" --label "ready-for-agent" | awk -F'/' '{print $NF}')
++echo "Created Ticket 2: #$T2"
++
++T3=$(gh issue create --title "3. Barra Lateral de Tarefas (Google Tasks)" --body "## Parent
++#1
++
++## What to build
++Conecta à API do Google Tasks. Cria uma barra lateral (Sidebar) na mesma página do calendário exibindo as tarefas pendentes do usuário.
++
++## Acceptance criteria
++- [ ] Fetch tasks from Google Tasks API
++- [ ] Render a sidebar alongside the calendar
++- [ ] Display pending tasks in the sidebar
++
++## Blocked by
++- #$T1" --label "ready-for-agent" | awk -F'/' '{print $NF}')
++echo "Created Ticket 3: #$T3"
++
++T4=$(gh issue create --title "4. Persistência de Scheduled Tasks (Banco de Dados)" --body "## Parent
++#1
++
++## What to build
++Configuração do Prisma/PostgreSQL. Criação do schema para a entidade ScheduledTask. Implementação das Server Actions (criar/ler) e um teste simples na interface (um botão mock) para provar que salva e lê do banco.
++
++## Acceptance criteria
++- [ ] Prisma configured with PostgreSQL
++- [ ] ScheduledTask schema created
++- [ ] Server actions for creating and reading ScheduledTasks
++- [ ] UI mechanism to test creating a ScheduledTask
++
++## Blocked by
++- #$T1" --label "ready-for-agent" | awk -F'/' '{print $NF}')
++echo "Created Ticket 4: #$T4"
++
++T5=$(gh issue create --title "5. Drag and Drop Interativo (O Core do App)" --body "## Parent
++#1
++
++## What to build
++Implementação do @dnd-kit/core. O usuário pode arrastar uma tarefa da barra lateral (Ticket 3) e soltá-la na grade do calendário (Ticket 2). Ao soltar, aciona a persistência (Ticket 4) e a tarefa aparece renderizada na grade como um bloco de 30 minutos.
++
++## Acceptance criteria
++- [ ] @dnd-kit/core implemented on Sidebar and Calendar
++- [ ] Dragging a task to a time slot triggers the ScheduledTask creation server action
++- [ ] Scheduled tasks appear on the calendar grid taking a 30-minute block
++
++## Blocked by
++- #$T2
++- #$T3
++- #$T4" --label "ready-for-agent" | awk -F'/' '{print $NF}')
++echo "Created Ticket 5: #$T5"
++
++T6=$(gh issue create --title "6. Sistema de Cores (Semantic Color-Coding)" --body "## Parent
++#1
++
++## What to build
++Aplica o algoritmo de design opinionado. Eventos do Google e Scheduled Tasks ganham cores vibrantes automaticamente na grade com base em palavras-chave ou em qual agenda/lista pertencem.
++
++## Acceptance criteria
++- [ ] Color generation algorithm based on task/event context
++- [ ] react-big-calendar event components are customized with Tailwind to use these colors
++
++## Blocked by
++- #$T5" --label "ready-for-agent" | awk -F'/' '{print $NF}')
++echo "Created Ticket 6: #$T6"
++
+diff --git a/eslint.config.mjs b/eslint.config.mjs
+new file mode 100644
+index 0000000..05e726d
+--- /dev/null
++++ b/eslint.config.mjs
+@@ -0,0 +1,18 @@
++import { defineConfig, globalIgnores } from "eslint/config";
++import nextVitals from "eslint-config-next/core-web-vitals";
++import nextTs from "eslint-config-next/typescript";
++
++const eslintConfig = defineConfig([
++  ...nextVitals,
++  ...nextTs,
++  // Override default ignores of eslint-config-next.
++  globalIgnores([
++    // Default ignores of eslint-config-next:
++    ".next/**",
++    "out/**",
++    "build/**",
++    "next-env.d.ts",
++  ]),
++]);
++
++export default eslintConfig;
+diff --git a/next.config.ts b/next.config.ts
+new file mode 100644
+index 0000000..e9ffa30
+--- /dev/null
++++ b/next.config.ts
+@@ -0,0 +1,7 @@
++import type { NextConfig } from "next";
++
++const nextConfig: NextConfig = {
++  /* config options here */
++};
++
++export default nextConfig;
+diff --git a/package.json b/package.json
+new file mode 100644
+index 0000000..7852dbe
+--- /dev/null
++++ b/package.json
+@@ -0,0 +1,27 @@
++{
++  "name": "agenda-temp",
++  "version": "0.1.0",
++  "private": true,
++  "scripts": {
++    "dev": "next dev",
++    "build": "next build",
++    "start": "next start",
++    "lint": "eslint"
++  },
++  "dependencies": {
++    "next": "16.3.4",
++    "next-auth": "^4.24.15",
++    "react": "19.2.8",
++    "react-dom": "19.2.8"
++  },
++  "devDependencies": {
++    "@tailwindcss/postcss": "^4",
++    "@types/node": "^20",
++    "@types/react": "^19",
++    "@types/react-dom": "^19",
++    "eslint": "^9",
++    "eslint-config-next": "16.3.4",
++    "tailwindcss": "^4",
++    "typescript": "^5"
++  }
++}
+diff --git a/postcss.config.mjs b/postcss.config.mjs
+new file mode 100644
+index 0000000..61e3684
+--- /dev/null
++++ b/postcss.config.mjs
+@@ -0,0 +1,7 @@
++const config = {
++  plugins: {
++    "@tailwindcss/postcss": {},
++  },
++};
++
++export default config;
+diff --git a/src/app/api/auth/[...nextauth]/route.ts b/src/app/api/auth/[...nextauth]/route.ts
+new file mode 100644
+index 0000000..192288f
+--- /dev/null
++++ b/src/app/api/auth/[...nextauth]/route.ts
+@@ -0,0 +1,35 @@
++import NextAuth from "next-auth";
++import GoogleProvider from "next-auth/providers/google";
++
++const handler = NextAuth({
++  providers: [
++    GoogleProvider({
++      clientId: process.env.GOOGLE_CLIENT_ID || "",
++      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
++      authorization: {
++        params: {
++          prompt: "consent",
++          access_type: "offline",
++          response_type: "code",
++          scope: "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks"
++        }
++      }
++    })
++  ],
++  callbacks: {
++    async jwt({ token, account }) {
++      if (account) {
++        token.accessToken = account.access_token;
++        token.refreshToken = account.refresh_token;
++      }
++      return token;
++    },
++    async session({ session, token }: any) {
++      session.accessToken = token.accessToken;
++      session.error = token.error;
++      return session;
++    }
++  }
++});
++
++export { handler as GET, handler as POST };
+diff --git a/src/app/favicon.ico b/src/app/favicon.ico
+new file mode 100644
+index 0000000..718d6fe
+Binary files /dev/null and b/src/app/favicon.ico differ
+diff --git a/src/app/globals.css b/src/app/globals.css
+new file mode 100644
+index 0000000..a2dc41e
+--- /dev/null
++++ b/src/app/globals.css
+@@ -0,0 +1,26 @@
++@import "tailwindcss";
++
++:root {
++  --background: #ffffff;
++  --foreground: #171717;
++}
++
++@theme inline {
++  --color-background: var(--background);
++  --color-foreground: var(--foreground);
++  --font-sans: var(--font-geist-sans);
++  --font-mono: var(--font-geist-mono);
++}
++
++@media (prefers-color-scheme: dark) {
++  :root {
++    --background: #0a0a0a;
++    --foreground: #ededed;
++  }
++}
++
++body {
++  background: var(--background);
++  color: var(--foreground);
++  font-family: Arial, Helvetica, sans-serif;
++}
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+new file mode 100644
+index 0000000..9852c15
+--- /dev/null
++++ b/src/app/layout.tsx
+@@ -0,0 +1,29 @@
++import type { Metadata } from "next";
++import { Geist, Geist_Mono } from "next/font/google";
++import "./globals.css";
++
++const geistSans = Geist({
++  variable: "--font-geist-sans",
++  subsets: ["latin"],
++});
++
++const geistMono = Geist_Mono({
++  variable: "--font-geist-mono",
++  subsets: ["latin"],
++});
++
++export const metadata: Metadata = {
++  title: "Create Next App",
++  description: "Generated by create next app",
++};
++
++export default function RootLayout({ children }: LayoutProps<"/">) {
++  return (
++    <html
++      lang="en"
++      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
++    >
++      <body className="min-h-full flex flex-col">{children}</body>
++    </html>
++  );
++}
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+new file mode 100644
+index 0000000..1c21fed
+--- /dev/null
++++ b/src/app/page.tsx
+@@ -0,0 +1,22 @@
++import { getServerSession } from "next-auth/next";
++import { redirect } from "next/navigation";
++
++export default async function Dashboard() {
++  const session = await getServerSession();
++  
++  if (!session) {
++    redirect("/api/auth/signin");
++  }
++
++  return (
++    <div className="min-h-screen bg-gray-50 p-8 flex flex-col items-center justify-center font-sans">
++      <h1 className="text-4xl font-bold text-gray-900 mb-4">Agenda Otto</h1>
++      <p className="text-lg text-gray-600 mb-8">
++        Welcome, {session.user?.name}! Your vibrant calendar is being built.
++      </p>
++      <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-4xl h-96 flex items-center justify-center text-gray-400">
++        Dashboard Area (Empty for now)
++      </div>
++    </div>
++  );
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..cf9c65d
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,34 @@
++{
++  "compilerOptions": {
++    "target": "ES2017",
++    "lib": ["dom", "dom.iterable", "esnext"],
++    "allowJs": true,
++    "skipLibCheck": true,
++    "strict": true,
++    "noEmit": true,
++    "esModuleInterop": true,
++    "module": "esnext",
++    "moduleResolution": "bundler",
++    "resolveJsonModule": true,
++    "isolatedModules": true,
++    "jsx": "react-jsx",
++    "incremental": true,
++    "plugins": [
++      {
++        "name": "next"
++      }
++    ],
++    "paths": {
++      "@/*": ["./src/*"]
++    }
++  },
++  "include": [
++    "next-env.d.ts",
++    "**/*.ts",
++    "**/*.tsx",
++    ".next/types/**/*.ts",
++    ".next/dev/types/**/*.ts",
++    "**/*.mts"
++  ],
++  "exclude": ["node_modules"]
++}
