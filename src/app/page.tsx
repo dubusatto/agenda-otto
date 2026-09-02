@@ -12,19 +12,14 @@ export default async function Dashboard() {
     redirect("/api/auth/signin");
   }
 
-  // Define time range (e.g., current month)
   const now = new Date();
   const timeMin = startOfMonth(now).toISOString();
   const timeMax = endOfMonth(now).toISOString();
 
-  let events = [];
-  if (session.accessToken) {
-    try {
-      events = await getCalendarEvents(session.accessToken, timeMin, timeMax);
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // Se a API falhar, não engolimos o erro silenciosamente. Ele será tratado pelo error.tsx
+  const events = session.accessToken 
+    ? await getCalendarEvents(session.accessToken, timeMin, timeMax)
+    : [];
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col font-sans">
