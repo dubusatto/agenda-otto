@@ -44,6 +44,27 @@ export async function getScheduledTasks() {
   return tasks;
 }
 
+export async function updateScheduledTaskTime(id: string, start: Date, end: Date) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !session.user?.email) {
+    throw new Error("Unauthorized");
+  }
+
+  const task = await prisma.scheduledTask.findUnique({ where: { id } });
+  if (!task || task.userEmail !== session.user.email) {
+    throw new Error("Unauthorized");
+  }
+
+  const updated = await prisma.scheduledTask.update({
+    where: { id },
+    data: { start, end },
+  });
+
+  revalidatePath("/");
+  return updated;
+}
+
 export async function updateGoogleTask(taskListId: string, taskId: string, updates: any) {
   const session = await getServerSession(authOptions);
   
