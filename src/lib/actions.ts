@@ -43,3 +43,27 @@ export async function getScheduledTasks() {
 
   return tasks;
 }
+
+export async function updateGoogleTask(taskListId: string, taskId: string, updates: any) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !session.accessToken) {
+    throw new Error("Unauthorized");
+  }
+
+  const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${taskListId}/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(updates)
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to update task: ${res.statusText}`);
+  }
+
+  revalidatePath("/");
+  return res.json();
+}
