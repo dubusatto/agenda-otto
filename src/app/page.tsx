@@ -69,19 +69,6 @@ export default async function Dashboard() {
 
   const allEvents = [...googleEvents, ...mappedScheduledTasks];
 
-  // Inline server action to test DB creation
-  async function testCreateTask() {
-    "use server";
-    const start = new Date();
-    const end = addHours(start, 1);
-    await createScheduledTask({
-      googleTaskId: "mock-task-123",
-      title: "Tarefa Teste (Salva no Neon)",
-      start,
-      end,
-    });
-  }
-
   return (
     <div className="h-screen bg-gray-100 flex flex-col font-sans">
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm z-20 relative">
@@ -92,11 +79,6 @@ export default async function Dashboard() {
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">Agenda Otto</h1>
         </div>
         <div className="flex items-center gap-4">
-          <form action={testCreateTask}>
-            <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer shadow-sm">
-              + Testar Banco de Dados
-            </button>
-          </form>
           <div className="text-sm text-gray-600 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
             {session.user?.name}
           </div>
