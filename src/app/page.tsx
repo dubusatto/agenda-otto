@@ -6,6 +6,8 @@ import { getScheduledTasks, createScheduledTask } from "@/lib/actions";
 import DashboardClient from "@/components/DashboardClient";
 import { startOfMonth, endOfMonth, addHours } from "date-fns";
 
+import { getSemanticColor } from "@/lib/colors";
+
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
   
@@ -26,6 +28,7 @@ export default async function Dashboard() {
     : [[], [], []];
 
   // Map local DB tasks to the unified CalendarEvent interface
+  // using semantic colors based on their original google task ID so they are consistent
   const mappedScheduledTasks = scheduledTasksData.map(st => ({
     id: st.id,
     title: `✓ ${st.title}`,
@@ -33,7 +36,7 @@ export default async function Dashboard() {
     end: st.end,
     allDay: false,
     calendarId: 'local-db',
-    backgroundColor: '#10b981', // emerald-500
+    backgroundColor: getSemanticColor(st.googleTaskId),
   }));
 
   const allEvents = [...googleEvents, ...mappedScheduledTasks];

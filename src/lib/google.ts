@@ -1,3 +1,5 @@
+import { getSemanticColor } from "@/lib/colors";
+
 // Define Domain Types
 export interface CalendarEvent {
   id: string;
@@ -60,7 +62,7 @@ export async function getCalendarEvents(accessToken: string, timeMin: string, ti
             end: new Date(endStr),
             allDay: !e.start.dateTime,
             calendarId: calendar.id,
-            backgroundColor: calendar.backgroundColor || '#3174ad'
+            backgroundColor: getSemanticColor(calendar.id)
           };
         })
         .filter(Boolean) as CalendarEvent[];
