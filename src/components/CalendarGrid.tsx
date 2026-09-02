@@ -58,6 +58,7 @@ function DateCellWrapper({ children, value }: any) {
 
 export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [view, setView] = useState<View>('week');
+  const [date, setDate] = useState<Date>(new Date());
   const [isPending, startTransition] = useTransition();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
@@ -94,6 +95,8 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         endAccessor="end"
         view={view}
         onView={setView}
+        date={date}
+        onNavigate={setDate}
         views={['month', 'week', 'day']}
         style={{ height: '100%' }}
         onSelectEvent={(event) => setSelectedEvent(event as any)}
@@ -111,7 +114,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
             style: { 
               backgroundColor: event.backgroundColor, 
               borderRadius: '6px', 
-              opacity: 1, 
+              opacity: event.completed ? 0.5 : 1, 
               color: 'white', 
               border: 'none',
               padding: '2px 4px',

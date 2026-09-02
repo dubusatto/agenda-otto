@@ -32,12 +32,13 @@ export default async function Dashboard() {
   const mappedScheduledTasks = scheduledTasksData.flatMap(st => {
     const baseEvent = {
       id: st.id,
-      title: `✓ ${st.title}`,
+      title: st.completed ? `✓ ${st.title} (Concluída)` : `✓ ${st.title}`,
       start: st.start,
       end: st.end,
       allDay: false,
       calendarId: 'local-db',
       backgroundColor: getSemanticColor(st.googleTaskId),
+      completed: st.completed,
     };
 
     if (st.rrule) {

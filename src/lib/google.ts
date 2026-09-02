@@ -6,9 +6,10 @@ export interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  allDay: boolean;
+  allDay?: boolean;
   calendarId: string;
-  backgroundColor: string;
+  backgroundColor?: string;
+  completed?: boolean;
 }
 
 export interface GoogleTask {

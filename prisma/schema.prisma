@@ -14,6 +14,7 @@ model ScheduledTask {
   start        DateTime
   end          DateTime
   rrule        String?
+  completed    Boolean  @default(false)
   userEmail    String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

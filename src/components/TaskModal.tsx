@@ -2,7 +2,7 @@
 
 import { CalendarEvent } from "@/lib/google";
 import { useTransition } from "react";
-import { updateScheduledTaskRecurrence, deleteScheduledTask } from "@/lib/actions";
+import { updateScheduledTaskRecurrence, deleteScheduledTask, toggleScheduledTaskCompletion } from "@/lib/actions";
 
 export default function TaskModal({ 
   isOpen, 
@@ -82,14 +82,28 @@ export default function TaskModal({
                   disabled={isPending}
                   className="text-red-500 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-bold transition"
                 >
-                  Excluir do Calendário
+                  Excluir
                 </button>
-                <button 
-                  onClick={onClose}
-                  className="bg-gray-900 text-white hover:bg-gray-800 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
-                >
-                  Concluído
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      startTransition(async () => {
+                        await toggleScheduledTaskCompletion(event.id, !event.completed);
+                        onClose();
+                      });
+                    }}
+                    disabled={isPending}
+                    className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
+                  >
+                    {event.completed ? 'Reabrir Tarefa' : 'Marcar Concluída'}
+                  </button>
+                  <button 
+                    onClick={onClose}
+                    className="bg-gray-900 text-white hover:bg-gray-800 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
+                  >
+                    Fechar
+                  </button>
+                </div>
               </div>
             </div>
           ) : (

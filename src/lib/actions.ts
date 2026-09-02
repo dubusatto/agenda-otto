@@ -44,6 +44,24 @@ export async function getScheduledTasks() {
   return tasks;
 }
 
+export async function toggleScheduledTaskCompletion(id: string, completed: boolean) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const baseId = id.split('-')[0];
+  const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  const updated = await prisma.scheduledTask.update({
+    where: { id: baseId },
+    data: { completed },
+  });
+
+  revalidatePath("/");
+  return updated;
+}
+
 export async function updateScheduledTaskTime(id: string, start: Date, end: Date) {
   const session = await getServerSession(authOptions);
   
