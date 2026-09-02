@@ -5,8 +5,8 @@ import { getCalendarEvents, getGoogleTasks } from "@/lib/google";
 import { getScheduledTasks, createScheduledTask } from "@/lib/actions";
 import DashboardClient from "@/components/DashboardClient";
 import { startOfMonth, endOfMonth, addHours } from "date-fns";
-
 import { getSemanticColor } from "@/lib/colors";
+import { RRule } from "rrule";
 
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
@@ -29,15 +29,43 @@ export default async function Dashboard() {
 
   // Map local DB tasks to the unified CalendarEvent interface
   // using semantic colors based on their original google task ID so they are consistent
-  const mappedScheduledTasks = scheduledTasksData.map(st => ({
-    id: st.id,
-    title: `✓ ${st.title}`,
-    start: st.start,
-    end: st.end,
-    allDay: false,
-    calendarId: 'local-db',
-    backgroundColor: getSemanticColor(st.googleTaskId),
-  }));
+  const mappedScheduledTasks = scheduledTasksData.flatMap(st => {
+    const baseEvent = {
+      id: st.id,
+      title: `✓ ${st.title}`,
+      start: st.start,
+      end: st.end,
+      allDay: false,
+      calendarId: 'local-db',
+      backgroundColor: getSemanticColor(st.googleTaskId),
+    };
+
+    if (st.rrule) {
+      try {
+        const duration = st.end.getTime() - st.start.getTime();
+        const options = RRule.parseString(st.rrule);
+        options.dtstart = new Date(Date.UTC(st.start.getUTCFullYear(), st.start.getUTCMonth(), st.start.getUTCDate(), st.start.getUTCHours(), st.start.getUTCMinutes(), st.start.getUTCSeconds()));
+        
+        const rruleObj = new RRule(options);
+        const occurrences = rruleObj.between(new Date(timeMin), new Date(timeMax), true);
+        
+        return occurrences.map((date, i) => {
+          // Adjust UTC back to local if needed, rrule outputs UTC dates based on dtstart
+          return {
+            ...baseEvent,
+            id: `${st.id}-${i}`,
+            start: date,
+            end: new Date(date.getTime() + duration)
+          };
+        });
+      } catch (e) {
+        console.error("Error parsing rrule", e);
+        return [baseEvent];
+      }
+    }
+
+    return [baseEvent];
+  });
 
   const allEvents = [...googleEvents, ...mappedScheduledTasks];
 

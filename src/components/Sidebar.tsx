@@ -5,6 +5,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition } from "react";
 import { updateGoogleTask } from "@/lib/actions";
+import { getSemanticColor } from "@/lib/colors";
 
 function DraggableTask({ task }: { task: GoogleTask }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -15,6 +16,8 @@ function DraggableTask({ task }: { task: GoogleTask }) {
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
+
+  const taskColor = getSemanticColor(task.id);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -41,16 +44,17 @@ function DraggableTask({ task }: { task: GoogleTask }) {
   return (
     <div 
       ref={setNodeRef}
-      style={style}
-      className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-blue-400 hover:shadow-md transition-all relative z-20 group"
+      style={{ ...style, borderLeftColor: taskColor, borderLeftWidth: '4px' }}
+      className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all relative z-20 group"
     >
       <div className="flex items-start gap-2">
         {/* Drag Handle */}
         <div 
           {...listeners}
           {...attributes}
-          className="mt-1 cursor-grab text-gray-300 hover:text-gray-500 transition-colors"
+          className="mt-1 cursor-grab opacity-30 hover:opacity-100 transition-opacity"
           title="Arrastar para o calendário"
+          style={{ color: taskColor }}
         >
           <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
             <path d="M4 2a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm-8 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm-8 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -61,7 +65,8 @@ function DraggableTask({ task }: { task: GoogleTask }) {
           type="checkbox" 
           onChange={handleComplete}
           disabled={isPending}
-          className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 cursor-pointer" 
+          className="mt-1 h-4 w-4 rounded cursor-pointer" 
+          style={{ accentColor: taskColor }}
         />
         
         <div className="flex-1">

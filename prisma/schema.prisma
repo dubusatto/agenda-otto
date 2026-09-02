@@ -13,6 +13,7 @@ model ScheduledTask {
   title        String
   start        DateTime
   end          DateTime
+  rrule        String?
   userEmail    String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

@@ -65,6 +65,38 @@ export async function updateScheduledTaskTime(id: string, start: Date, end: Date
   return updated;
 }
 
+export async function updateScheduledTaskRecurrence(id: string, rrule: string | null) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const task = await prisma.scheduledTask.findUnique({ where: { id } });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  const updated = await prisma.scheduledTask.update({
+    where: { id },
+    data: { rrule },
+  });
+
+  revalidatePath("/");
+  return updated;
+}
+
+export async function deleteScheduledTask(id: string) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const task = await prisma.scheduledTask.findUnique({ where: { id } });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  await prisma.scheduledTask.delete({
+    where: { id }
+  });
+
+  revalidatePath("/");
+}
+
 export async function updateGoogleTask(taskListId: string, taskId: string, updates: any) {
   const session = await getServerSession(authOptions);
   

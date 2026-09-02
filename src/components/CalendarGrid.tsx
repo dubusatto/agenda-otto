@@ -10,6 +10,7 @@ import { CalendarEvent } from '@/lib/google';
 import React, { useState, useTransition } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { updateScheduledTaskTime } from '@/lib/actions';
+import TaskModal from './TaskModal';
 
 const locales = {
   'en-US': enUS,
@@ -58,6 +59,7 @@ function DateCellWrapper({ children, value }: any) {
 export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [view, setView] = useState<View>('week');
   const [isPending, startTransition] = useTransition();
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const handleEventDrop = ({ event, start, end }: EventInteractionArgs<any>) => {
     if (event.calendarId !== 'local-db') return; // Only allow moving local scheduled tasks for now
@@ -94,6 +96,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         onView={setView}
         views={['month', 'week', 'day']}
         style={{ height: '100%' }}
+        onSelectEvent={(event) => setSelectedEvent(event as any)}
         onEventDrop={handleEventDrop}
         onEventResize={handleEventResize}
         resizable
@@ -107,15 +110,22 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
           return { 
             style: { 
               backgroundColor: event.backgroundColor, 
-              borderRadius: '4px', 
-              opacity: 0.9, 
+              borderRadius: '6px', 
+              opacity: 1, 
               color: 'white', 
               border: 'none',
               padding: '2px 4px',
-              fontSize: '12px'
+              fontSize: '12px',
+              fontWeight: '500',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
             } 
           };
         }}
+      />
+      <TaskModal 
+        isOpen={!!selectedEvent} 
+        onClose={() => setSelectedEvent(null)} 
+        event={selectedEvent} 
       />
     </div>
   );
