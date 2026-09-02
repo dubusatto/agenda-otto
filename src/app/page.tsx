@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { getCalendarEvents, getGoogleTasks } from "@/lib/google";
 import { getScheduledTasks, createScheduledTask } from "@/lib/actions";
-import CalendarGrid from "@/components/CalendarGrid";
-import Sidebar from "@/components/Sidebar";
+import DashboardClient from "@/components/DashboardClient";
 import { startOfMonth, endOfMonth, addHours } from "date-fns";
 
 export default async function Dashboard() {
@@ -72,14 +71,9 @@ export default async function Dashboard() {
           </div>
         </div>
       </header>
-      <main className="flex-1 overflow-hidden flex relative z-10">
-        <div className="flex-1 p-6 overflow-hidden">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full h-full p-4">
-            <CalendarGrid events={allEvents} />
-          </div>
-        </div>
-        <Sidebar tasks={tasks} />
-      </main>
+      
+      {/* Client-side Drag and Drop wrapper */}
+      <DashboardClient initialEvents={allEvents} tasks={tasks} />
     </div>
   );
 }
