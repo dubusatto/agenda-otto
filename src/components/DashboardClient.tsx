@@ -4,7 +4,7 @@ import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, defaultDropAnima
 import CalendarGrid from "./CalendarGrid";
 import Sidebar from "./Sidebar";
 import { GoogleTask, CalendarEvent } from "@/lib/google";
-import { useState } from "react";
+import { useState, useId } from "react";
 import { createScheduledTask } from "@/lib/actions";
 
 export default function DashboardClient({ 
@@ -16,6 +16,7 @@ export default function DashboardClient({
   tasks: GoogleTask[],
   localTasks?: any[]
 }) {
+  const dndId = useId();
   const [activeTask, setActiveTask] = useState<GoogleTask | null>(null);
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -62,7 +63,7 @@ export default function DashboardClient({
   };
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext id={dndId} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <main className="flex-1 overflow-hidden flex relative z-10">
         <div className="flex-1 p-6 overflow-hidden">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full h-full p-4">
