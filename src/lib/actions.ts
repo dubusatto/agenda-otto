@@ -208,3 +208,25 @@ export async function addCheckIn(id: string, note: string) {
     revalidatePath("/");
   }
 }
+
+export async function createGoogleTask(title: string) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !session.accessToken) throw new Error("Unauthorized");
+
+  const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ title })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to create task: ${res.statusText}`);
+  }
+
+  revalidatePath("/");
+  return res.json();
+}

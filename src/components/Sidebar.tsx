@@ -4,7 +4,7 @@ import { GoogleTask } from "@/lib/google";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition } from "react";
-import { updateGoogleTask } from "@/lib/actions";
+import { updateGoogleTask, createGoogleTask } from "@/lib/actions";
 import { getSemanticColor } from "@/lib/colors";
 
 function DraggableTask({ task, scheduledTask }: { task: GoogleTask, scheduledTask: any }) {
@@ -117,11 +117,46 @@ function DraggableTask({ task, scheduledTask }: { task: GoogleTask, scheduledTas
 }
 
 export default function Sidebar({ tasks, localTasks = [] }: { tasks: GoogleTask[], localTasks?: any[] }) {
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [isCreating, startTransition] = useTransition();
+
+  const handleCreateTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim()) return;
+    
+    startTransition(async () => {
+      try {
+        await createGoogleTask(newTaskTitle.trim());
+        setNewTaskTitle("");
+      } catch (err) {
+        console.error("Failed to create task", err);
+      }
+    });
+  };
+
   return (
     <aside className="w-80 bg-gray-50 border-l border-gray-200 flex flex-col h-full z-20">
       <div className="p-4 border-b border-gray-200 bg-white">
         <h2 className="text-lg font-bold text-gray-900">Suas Tarefas</h2>
-        <p className="text-sm text-gray-500 font-medium">Arraste para o calendário</p>
+        <p className="text-sm text-gray-500 font-medium mb-3">Arraste para o calendário</p>
+        
+        <form onSubmit={handleCreateTask} className="flex gap-2">
+          <input 
+            type="text" 
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            placeholder="Nova tarefa..."
+            disabled={isCreating}
+            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+          />
+          <button 
+            type="submit" 
+            disabled={isCreating || !newTaskTitle.trim()}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg px-3 py-2 font-bold text-sm transition shadow-sm"
+          >
+            {isCreating ? '...' : '+'}
+          </button>
+        </form>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
