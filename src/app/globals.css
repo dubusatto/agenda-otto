@@ -24,3 +24,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* React Big Calendar Overrides for Visibility */
+.rbc-header {
+  color: #374151 !important; /* text-gray-700 */
+  font-weight: 600 !important;
+  padding: 8px 0 !important;
+}
+
+.rbc-toolbar button {
+  color: #374151 !important; /* text-gray-700 */
+}
+
+.rbc-toolbar button.rbc-active {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.rbc-toolbar-label {
+  color: #111827 !important; /* text-gray-900 */
+  font-weight: 700 !important;
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  color: #4b5563 !important; /* text-gray-600 */
+  font-weight: 500;
+}
+
+.rbc-month-view .rbc-date-cell {
+  color: #374151 !important;
+  font-weight: 500;
+}
+
+.rbc-off-range-bg {
+  background: #f9fafb !important; /* gray-50 */
+}
+
+.rbc-off-range {
+  color: #9ca3af !important; /* gray-400 */
+}
