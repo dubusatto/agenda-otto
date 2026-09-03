@@ -189,6 +189,45 @@ export default function TaskModal({
                     return `${h}h ${m}m`;
                   };
 
+                  const renderEntryHistory = (entry: any, index: number) => {
+                    let previousTime = new Date(entry.startTime).getTime();
+                    
+                    return (
+                      <div key={entry.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-gray-700">
+                            Sessão {index + 1} ({new Date(entry.startTime).toLocaleDateString()})
+                          </span>
+                          <span className="text-xs text-gray-500 font-medium">
+                            {new Date(entry.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+                            {' -> '} 
+                            {entry.endTime ? new Date(entry.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Em andamento'}
+                          </span>
+                        </div>
+                        
+                        {entry.checkins?.length > 0 && (
+                          <div className="space-y-1.5 mt-2 border-l-2 border-gray-200 pl-2">
+                            {entry.checkins.map((c: any) => {
+                              const current = new Date(c.timestamp).getTime();
+                              const elapsed = current - previousTime;
+                              previousTime = current;
+                              
+                              return (
+                                <div key={c.id} className="text-xs bg-white border border-gray-100 p-2 rounded flex justify-between items-center shadow-sm">
+                                  <span className="text-gray-800 font-medium">{c.note}</span>
+                                  <div className="flex flex-col items-end">
+                                    <span className="text-gray-400">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                    <span className="text-emerald-600 font-bold">+{formatTime(elapsed)}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  };
+
                   return (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200">
@@ -196,13 +235,21 @@ export default function TaskModal({
                         <span className="text-sm font-bold text-gray-900">{formatTime(totalPastTimeMs)}</span>
                       </div>
 
+                      {/* Histórico completo */}
+                      {event.timeEntries && event.timeEntries!.length > 0 && (
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {/* Sort to show oldest session first for sensible indexing, or reverse? Let's keep original order (oldest first usually) */}
+                          {[...event.timeEntries].reverse().map((entry: any, i: number) => renderEntryHistory(entry, event.timeEntries!.length - 1 - i))}
+                        </div>
+                      )}
+
                       {!activeEntry ? (
                         <button
                           onClick={() => startTransition(async () => { await startTimeTracking(event.id); })}
                           disabled={isPending}
                           className="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 py-3 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2"
                         >
-                          ▶️ Iniciar Tarefa
+                          ▶️ Iniciar Sessão de Trabalho
                         </button>
                       ) : (
                         <div className="space-y-3 p-4 bg-orange-50 border border-orange-200 rounded-xl">
@@ -212,7 +259,7 @@ export default function TaskModal({
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
                               </span>
-                              Em andamento...
+                              Trabalhando agora...
                             </span>
                             <button
                               onClick={() => startTransition(async () => { await stopTimeTracking(event.id); })}
@@ -228,7 +275,7 @@ export default function TaskModal({
                               type="text" 
                               value={checkInText}
                               onChange={(e) => setCheckInText(e.target.value)}
-                              placeholder="Fase terminada..."
+                              placeholder="Finalizei a tela inicial..."
                               className="flex-1 text-sm border border-orange-200 bg-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                             />
                             <button
@@ -243,17 +290,6 @@ export default function TaskModal({
                               Check-in
                             </button>
                           </div>
-
-                          {activeEntry.checkins?.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              {activeEntry.checkins.map((c: any) => (
-                                <div key={c.id} className="text-xs text-orange-800 bg-orange-100/50 p-2 rounded flex justify-between">
-                                  <span>{c.note}</span>
-                                  <span className="opacity-50">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
