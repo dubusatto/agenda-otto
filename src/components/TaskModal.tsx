@@ -1,8 +1,18 @@
 "use client";
 
 import { CalendarEvent } from "@/lib/google";
-import { useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { updateScheduledTaskRecurrence, deleteScheduledTask, toggleScheduledTaskCompletion } from "@/lib/actions";
+
+const DAYS_MAP = [
+  { id: 'MO', label: 'S' },
+  { id: 'TU', label: 'T' },
+  { id: 'WE', label: 'Q' },
+  { id: 'TH', label: 'Q' },
+  { id: 'FR', label: 'S' },
+  { id: 'SA', label: 'S' },
+  { id: 'SU', label: 'D' },
+];
 
 export default function TaskModal({ 
   isOpen, 
@@ -14,16 +24,51 @@ export default function TaskModal({
   event: CalendarEvent | null 
 }) {
   const [isPending, startTransition] = useTransition();
+  const [recurrenceType, setRecurrenceType] = useState<'NONE' | 'DAILY' | 'WEEKLY'>('NONE');
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
   
+  // Sync state when modal opens
+  useEffect(() => {
+    if (event?.rrule) {
+      if (event.rrule.includes('FREQ=WEEKLY')) {
+        setRecurrenceType('WEEKLY');
+        const byDayMatch = event.rrule.match(/BYDAY=([^;]+)/);
+        if (byDayMatch) {
+          setSelectedDays(byDayMatch[1].split(','));
+        } else {
+          setSelectedDays([]); // If no days specified, it's just every week on the start date
+        }
+      } else if (event.rrule.includes('FREQ=DAILY')) {
+        setRecurrenceType('DAILY');
+        setSelectedDays([]);
+      }
+    } else {
+      setRecurrenceType('NONE');
+      setSelectedDays([]);
+    }
+  }, [event]);
+
   if (!isOpen || !event) return null;
 
   const isLocal = event.calendarId === 'local-db';
 
-  const handleSetRecurrence = (freq: 'DAILY' | 'WEEKLY' | 'NONE') => {
+  const toggleDay = (dayId: string) => {
+    setSelectedDays(prev => 
+      prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId]
+    );
+  };
+
+  const handleSaveRecurrence = () => {
     if (!isLocal) return;
     
     startTransition(async () => {
-      const rrule = freq === 'NONE' ? null : `FREQ=${freq}`;
+      let rrule = null;
+      if (recurrenceType === 'DAILY') {
+        rrule = 'FREQ=DAILY';
+      } else if (recurrenceType === 'WEEKLY') {
+        rrule = selectedDays.length > 0 ? `FREQ=WEEKLY;BYDAY=${selectedDays.join(',')}` : 'FREQ=WEEKLY';
+      }
+      
       await updateScheduledTaskRecurrence(event.id, rrule);
       onClose();
     });
@@ -35,6 +80,17 @@ export default function TaskModal({
       await deleteScheduledTask(event.id);
       onClose();
     });
+  };
+
+  const hasRecurrenceChanged = () => {
+    const originalRrule = event.rrule || null;
+    let newRrule = null;
+    if (recurrenceType === 'DAILY') {
+      newRrule = 'FREQ=DAILY';
+    } else if (recurrenceType === 'WEEKLY') {
+      newRrule = selectedDays.length > 0 ? `FREQ=WEEKLY;BYDAY=${selectedDays.join(',')}` : 'FREQ=WEEKLY';
+    }
+    return originalRrule !== newRrule;
   };
 
   return (
@@ -50,32 +106,64 @@ export default function TaskModal({
           {isLocal ? (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Recorrência</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Padrão de Repetição</label>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => handleSetRecurrence('NONE')}
+                    onClick={() => setRecurrenceType('NONE')}
                     disabled={isPending}
-                    className="flex-1 py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm hover:bg-gray-100 transition font-medium"
+                    className={`flex-1 py-2 px-3 border rounded-xl text-sm font-medium transition ${recurrenceType === 'NONE' ? 'bg-gray-100 border-gray-300 text-gray-900 ring-1 ring-gray-300' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}
                   >
                     Não repete
                   </button>
                   <button 
-                    onClick={() => handleSetRecurrence('DAILY')}
+                    onClick={() => setRecurrenceType('DAILY')}
                     disabled={isPending}
-                    className="flex-1 py-2 px-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-sm hover:bg-blue-100 transition font-medium"
+                    className={`flex-1 py-2 px-3 border rounded-xl text-sm font-medium transition ${recurrenceType === 'DAILY' ? 'bg-blue-50 border-blue-300 text-blue-700 ring-1 ring-blue-300' : 'bg-white border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-blue-600'}`}
                   >
                     Diário
                   </button>
                   <button 
-                    onClick={() => handleSetRecurrence('WEEKLY')}
+                    onClick={() => setRecurrenceType('WEEKLY')}
                     disabled={isPending}
-                    className="flex-1 py-2 px-3 bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200 rounded-xl text-sm hover:bg-fuchsia-100 transition font-medium"
+                    className={`flex-1 py-2 px-3 border rounded-xl text-sm font-medium transition ${recurrenceType === 'WEEKLY' ? 'bg-fuchsia-50 border-fuchsia-300 text-fuchsia-700 ring-1 ring-fuchsia-300' : 'bg-white border-gray-200 text-gray-600 hover:bg-fuchsia-50 hover:text-fuchsia-600'}`}
                   >
                     Semanal
                   </button>
                 </div>
               </div>
+
+              {recurrenceType === 'WEEKLY' && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                  <label className="block text-sm font-medium text-gray-600 mb-2">Repetir nos dias:</label>
+                  <div className="flex justify-between gap-1">
+                    {DAYS_MAP.map(day => {
+                      const isSelected = selectedDays.includes(day.id);
+                      return (
+                        <button
+                          key={day.id}
+                          onClick={() => toggleDay(day.id)}
+                          className={`w-10 h-10 rounded-full text-sm font-bold flex items-center justify-center transition-colors ${isSelected ? 'bg-fuchsia-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        >
+                          {day.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               
+              {hasRecurrenceChanged() && (
+                <div className="pt-2">
+                  <button 
+                    onClick={handleSaveRecurrence}
+                    disabled={isPending}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl text-sm font-bold transition shadow-sm"
+                  >
+                    Salvar Mudança de Recorrência
+                  </button>
+                </div>
+              )}
+
               <div className="pt-4 flex justify-between border-t border-gray-100 items-center">
                 <button 
                   onClick={handleDelete}

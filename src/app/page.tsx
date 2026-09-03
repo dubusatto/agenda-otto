@@ -39,6 +39,7 @@ export default async function Dashboard() {
       calendarId: 'local-db',
       backgroundColor: getSemanticColor(st.googleTaskId),
       completed: st.completed,
+      rrule: st.rrule || undefined,
     };
 
     if (st.rrule) {

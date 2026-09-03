@@ -1,6 +1,5 @@
 import { getSemanticColor } from "@/lib/colors";
 
-// Define Domain Types
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -10,6 +9,7 @@ export interface CalendarEvent {
   calendarId: string;
   backgroundColor?: string;
   completed?: boolean;
+  rrule?: string;
 }
 
 export interface GoogleTask {
