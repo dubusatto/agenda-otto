@@ -8,7 +8,8 @@ import {
   toggleScheduledTaskCompletion,
   startTimeTracking,
   stopTimeTracking,
-  addCheckIn
+  addCheckIn,
+  deleteCheckIn
 } from "@/lib/actions";
 
 const DAYS_MAP = [
@@ -213,11 +214,21 @@ export default function TaskModal({
                               previousTime = current;
                               
                               return (
-                                <div key={c.id} className="text-xs bg-white border border-gray-100 p-2 rounded flex justify-between items-center shadow-sm">
+                                <div key={c.id} className="text-xs bg-white border border-gray-100 p-2 rounded flex justify-between items-center shadow-sm group">
                                   <span className="text-gray-800 font-medium">{c.note}</span>
-                                  <div className="flex flex-col items-end">
-                                    <span className="text-gray-400">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                    <span className="text-emerald-600 font-bold">+{formatTime(elapsed)}</span>
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-end">
+                                      <span className="text-gray-400">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                      <span className="text-emerald-600 font-bold">+{formatTime(elapsed)}</span>
+                                    </div>
+                                    <button 
+                                      onClick={() => startTransition(async () => { await deleteCheckIn(c.id); })}
+                                      disabled={isPending}
+                                      className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Excluir Check-in"
+                                    >
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    </button>
                                   </div>
                                 </div>
                               );
@@ -236,9 +247,8 @@ export default function TaskModal({
                       </div>
 
                       {/* Histórico completo */}
-                      {event.timeEntries && event.timeEntries!.length > 0 && (
+                      {event.timeEntries && event.timeEntries.length > 0 && (
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                          {/* Sort to show oldest session first for sensible indexing, or reverse? Let's keep original order (oldest first usually) */}
                           {[...event.timeEntries].reverse().map((entry: any, i: number) => renderEntryHistory(entry, event.timeEntries!.length - 1 - i))}
                         </div>
                       )}
@@ -266,7 +276,7 @@ export default function TaskModal({
                               disabled={isPending}
                               className="text-xs bg-orange-200 text-orange-800 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-300 transition"
                             >
-                              ⏸️ Pausar
+                              ⏹️ Encerrar Sessão
                             </button>
                           </div>
                           

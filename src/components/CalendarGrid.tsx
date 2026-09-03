@@ -62,6 +62,14 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [isPending, startTransition] = useTransition();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
+  // Sync selected event when server data updates
+  React.useEffect(() => {
+    if (selectedEvent) {
+      const updated = events.find(e => e.id === selectedEvent.id);
+      if (updated) setSelectedEvent(updated);
+    }
+  }, [events]);
+
   const handleEventDrop = ({ event, start, end }: EventInteractionArgs<any>) => {
     if (event.calendarId !== 'local-db') return; // Only allow moving local scheduled tasks for now
 
