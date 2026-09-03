@@ -3,17 +3,19 @@
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, defaultDropAnimationSideEffects } from "@dnd-kit/core";
 import CalendarGrid from "./CalendarGrid";
 import Sidebar from "./Sidebar";
-import { GoogleTask, CalendarEvent } from "@/lib/google";
+import { GoogleTask, CalendarEvent, TaskList } from "@/lib/google";
 import { useState, useId } from "react";
 import { createScheduledTask } from "@/lib/actions";
 
 export default function DashboardClient({ 
   initialEvents, 
   tasks,
+  taskLists,
   localTasks = []
 }: { 
   initialEvents: CalendarEvent[], 
   tasks: GoogleTask[],
+  taskLists: TaskList[],
   localTasks?: any[]
 }) {
   const dndId = useId();
@@ -70,7 +72,7 @@ export default function DashboardClient({
             <CalendarGrid events={initialEvents} />
           </div>
         </div>
-        <Sidebar tasks={tasks} localTasks={localTasks} />
+        <Sidebar tasks={tasks} taskLists={taskLists} localTasks={localTasks} />
       </main>
       
       {/* Visual overlay for dragging */}

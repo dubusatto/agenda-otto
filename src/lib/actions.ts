@@ -281,12 +281,12 @@ export async function addCheckIn(id: string, note: string) {
   }
 }
 
-export async function createGoogleTask(title: string) {
+export async function createGoogleTask(title: string, taskListId: string = '@default') {
   const session = await getServerSession(authOptions);
   
   if (!session || !session.accessToken) throw new Error("Unauthorized");
 
-  const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks`, {
+  const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${taskListId}/tasks`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${session.accessToken}`,
@@ -328,5 +328,33 @@ export async function deleteCheckIn(checkInId: string) {
     where: { id: checkInId }
   });
 
+  revalidatePath("/");
+}
+
+export async function createGoogleTaskList(title: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.accessToken) throw new Error("Unauthorized");
+
+  const res = await fetch(`https://tasks.googleapis.com/tasks/v1/users/@me/lists`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ title })
+  });
+  if (!res.ok) throw new Error(`Failed to create task list`);
+  
+  revalidatePath("/");
+  return res.json();
+}
+
+export async function deleteGoogleTaskList(taskListId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.accessToken) throw new Error("Unauthorized");
+
+  const res = await fetch(`https://tasks.googleapis.com/tasks/v1/users/@me/lists/${taskListId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${session.accessToken}` }
+  });
+  if (!res.ok) throw new Error(`Failed to delete task list`);
+  
   revalidatePath("/");
 }

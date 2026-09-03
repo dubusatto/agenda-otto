@@ -106,3 +106,16 @@ export async function getGoogleTasks(accessToken: string): Promise<GoogleTask[]>
   const allTasks = await Promise.all(tasksPromises);
   return allTasks.flat();
 }
+
+export interface TaskList {
+  id: string;
+  title: string;
+}
+
+export async function getGoogleTaskLists(accessToken: string): Promise<TaskList[]> {
+  const data = await googleFetch('https://tasks.googleapis.com/tasks/v1/users/@me/lists', accessToken);
+  return (data.items || []).map((list: any) => ({
+    id: list.id,
+    title: list.title
+  }));
+}

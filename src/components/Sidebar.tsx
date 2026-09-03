@@ -1,10 +1,10 @@
 "use client";
 
-import { GoogleTask } from "@/lib/google";
+import { GoogleTask, TaskList } from "@/lib/google";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition } from "react";
-import { updateGoogleTask, createGoogleTask } from "@/lib/actions";
+import { updateGoogleTask, createGoogleTask, createGoogleTaskList, deleteGoogleTaskList } from "@/lib/actions";
 import { getSemanticColor } from "@/lib/colors";
 
 function DraggableTask({ task, scheduledTask }: { task: GoogleTask, scheduledTask: any }) {
@@ -116,60 +116,149 @@ function DraggableTask({ task, scheduledTask }: { task: GoogleTask, scheduledTas
   );
 }
 
-export default function Sidebar({ tasks, localTasks = [] }: { tasks: GoogleTask[], localTasks?: any[] }) {
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [isCreating, startTransition] = useTransition();
+export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: GoogleTask[], taskLists: TaskList[], localTasks?: any[] }) {
+  const [expandedLists, setExpandedLists] = useState<Record<string, boolean>>({});
+  
+  // Create list state
+  const [isCreatingList, setIsCreatingList] = useState(false);
+  const [newListTitle, setNewListTitle] = useState("");
+  const [isPending, startTransition] = useTransition();
 
-  const handleCreateTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
-    
-    startTransition(async () => {
-      try {
-        await createGoogleTask(newTaskTitle.trim());
-        setNewTaskTitle("");
-      } catch (err) {
-        console.error("Failed to create task", err);
-      }
-    });
+  const toggleList = (listId: string) => {
+    setExpandedLists(prev => ({ ...prev, [listId]: !prev[listId] }));
   };
+
+  const pendingTasks = tasks.filter(t => t.status !== 'completed');
 
   return (
     <aside className="w-80 bg-gray-50 border-l border-gray-200 flex flex-col h-full z-20">
       <div className="p-4 border-b border-gray-200 bg-white">
-        <h2 className="text-lg font-bold text-gray-900">Suas Tarefas</h2>
-        <p className="text-sm text-gray-500 font-medium mb-3">Arraste para o calendário</p>
-        
-        <form onSubmit={handleCreateTask} className="flex gap-2">
-          <input 
-            type="text" 
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            placeholder="Nova tarefa..."
-            disabled={isCreating}
-            className="flex-1 text-sm text-gray-900 placeholder:text-gray-500 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
-          />
+        <div className="flex justify-between items-center mb-1">
+          <h2 className="text-lg font-bold text-gray-900">Suas Listas</h2>
           <button 
-            type="submit" 
-            disabled={isCreating || !newTaskTitle.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg px-3 py-2 font-bold text-sm transition shadow-sm"
+            onClick={() => setIsCreatingList(!isCreatingList)}
+            className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-sm font-bold transition"
           >
-            {isCreating ? '...' : '+'}
+            + Lista
           </button>
-        </form>
+        </div>
+        <p className="text-sm text-gray-500 font-medium mb-3">Organize e arraste</p>
+        
+        {isCreatingList && (
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!newListTitle.trim()) return;
+              startTransition(async () => {
+                await createGoogleTaskList(newListTitle.trim());
+                setNewListTitle("");
+                setIsCreatingList(false);
+              });
+            }}
+            className="flex gap-2 animate-in fade-in slide-in-from-top-2"
+          >
+            <input 
+              type="text" 
+              autoFocus
+              value={newListTitle}
+              onChange={(e) => setNewListTitle(e.target.value)}
+              placeholder="Nome da lista..."
+              disabled={isPending}
+              className="flex-1 text-sm text-gray-900 placeholder:text-gray-500 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button 
+              type="submit" 
+              disabled={isPending || !newListTitle.trim()}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg px-3 py-2 font-bold text-sm transition shadow-sm"
+            >
+              ✓
+            </button>
+          </form>
+        )}
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {tasks.map(task => {
-          const scheduledTask = localTasks.find(lt => lt.googleTaskId === task.id);
-          return <DraggableTask key={task.id} task={task} scheduledTask={scheduledTask} />;
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {taskLists.map(list => {
+          const isExpanded = expandedLists[list.id];
+          const listTasks = pendingTasks.filter(t => t.taskListId === list.id);
+          
+          return (
+            <div key={list.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div 
+                onClick={() => toggleList(list.id)}
+                className="p-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition select-none group"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400 text-xs">{isExpanded ? '▼' : '▶'}</span>
+                  <span className="font-bold text-gray-800 text-sm">{list.title}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-gray-100 text-gray-600 font-bold px-2 py-0.5 rounded-full">
+                    {listTasks.length}
+                  </span>
+                  <button 
+                    className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded p-1 transition opacity-0 group-hover:opacity-100"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if(confirm('Excluir esta lista e todas as tarefas dentro dela?')) {
+                        startTransition(async () => { await deleteGoogleTaskList(list.id); });
+                      }
+                    }}
+                    title="Excluir lista"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+                </div>
+              </div>
+              
+              {isExpanded && (
+                <div className="p-3 pt-0 bg-gray-50/50 border-t border-gray-100 animate-in fade-in slide-in-from-top-1">
+                  <div className="space-y-2 mt-3">
+                    {listTasks.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-2 italic">Lista vazia</p>
+                    ) : (
+                      listTasks.map((task) => {
+                        const isScheduled = localTasks?.some(lt => lt.googleTaskId === task.id);
+                        const scheduledTask = localTasks?.find(lt => lt.googleTaskId === task.id);
+                        return (
+                          <DraggableTask 
+                            key={task.id} 
+                            task={task} 
+                            scheduledTask={scheduledTask}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                  
+                  {/* Create task input for this list */}
+                  <form 
+                    className="mt-3 relative"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const input = e.currentTarget.elements.namedItem('title') as HTMLInputElement;
+                      const title = input.value.trim();
+                      if (!title) return;
+                      startTransition(async () => {
+                        await createGoogleTask(title, list.id);
+                        input.value = '';
+                      });
+                    }}
+                  >
+                    <input 
+                      type="text" 
+                      name="title"
+                      placeholder="Nova tarefa aqui..."
+                      disabled={isPending}
+                      className="w-full text-xs text-gray-900 placeholder:text-gray-400 border border-gray-200 bg-white rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                    <button type="submit" disabled={isPending} className="absolute right-2 top-1.5 text-blue-500 hover:text-blue-700 font-bold text-sm">+</button>
+                  </form>
+                </div>
+              )}
+            </div>
+          );
         })}
-        
-        {tasks.length === 0 && (
-          <div className="text-center text-gray-400 py-8 text-sm font-medium">
-            Nenhuma tarefa pendente no Google Tasks.
-          </div>
-        )}
       </div>
     </aside>
   );

@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { getCalendarEvents, getGoogleTasks } from "@/lib/google";
+import { getCalendarEvents, getGoogleTasks, getGoogleTaskLists } from "@/lib/google";
 import { getScheduledTasks, createScheduledTask } from "@/lib/actions";
 import DashboardClient from "@/components/DashboardClient";
 import { startOfMonth, endOfMonth, addHours } from "date-fns";
@@ -19,13 +19,14 @@ export default async function Dashboard() {
   const timeMin = startOfMonth(now).toISOString();
   const timeMax = endOfMonth(now).toISOString();
 
-  const [googleEvents, tasks, scheduledTasksData] = session.accessToken 
+  const [googleEvents, tasks, taskLists, scheduledTasksData] = session.accessToken 
     ? await Promise.all([
         getCalendarEvents(session.accessToken, timeMin, timeMax),
         getGoogleTasks(session.accessToken),
+        getGoogleTaskLists(session.accessToken),
         getScheduledTasks()
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   // Map local DB tasks to the unified CalendarEvent interface
   // using semantic colors based on their original google task ID so they are consistent
@@ -98,7 +99,7 @@ export default async function Dashboard() {
       </header>
       
       {/* Client-side Drag and Drop wrapper */}
-      <DashboardClient initialEvents={allEvents} tasks={tasks} localTasks={scheduledTasksData} />
+      <DashboardClient initialEvents={allEvents} tasks={tasks} taskLists={taskLists} localTasks={scheduledTasksData} />
     </div>
   );
 }
