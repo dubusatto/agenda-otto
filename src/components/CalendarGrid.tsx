@@ -11,6 +11,7 @@ import React, { useState, useTransition } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { updateScheduledTaskTime } from '@/lib/actions';
 import TaskModal from './TaskModal';
+import CreateTaskModal from './CreateTaskModal';
 
 const locales = {
   'en-US': enUS,
@@ -61,6 +62,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [date, setDate] = useState<Date>(new Date());
   const [isPending, startTransition] = useTransition();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [newTaskSlot, setNewTaskSlot] = useState<{start: Date, end: Date} | null>(null);
 
   // Sync selected event when server data updates
   React.useEffect(() => {
@@ -107,6 +109,12 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         onNavigate={setDate}
         views={['month', 'week', 'day']}
         style={{ height: '100%' }}
+        selectable
+        onSelectSlot={(slotInfo) => {
+          if (slotInfo.action === 'click' || slotInfo.action === 'select') {
+            setNewTaskSlot({ start: slotInfo.start, end: slotInfo.end });
+          }
+        }}
         onSelectEvent={(event) => setSelectedEvent(event as any)}
         onEventDrop={handleEventDrop}
         onEventResize={handleEventResize}
@@ -137,6 +145,12 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         isOpen={!!selectedEvent} 
         onClose={() => setSelectedEvent(null)} 
         event={selectedEvent} 
+      />
+      <CreateTaskModal
+        isOpen={!!newTaskSlot}
+        onClose={() => setNewTaskSlot(null)}
+        start={newTaskSlot?.start || null}
+        end={newTaskSlot?.end || null}
       />
     </div>
   );

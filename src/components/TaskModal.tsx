@@ -191,7 +191,12 @@ export default function TaskModal({
                   };
 
                   const renderEntryHistory = (entry: any, index: number) => {
-                    let previousTime = new Date(entry.startTime).getTime();
+                    const startMs = new Date(entry.startTime).getTime();
+                    
+                    // Ordena os check-ins do mais antigo para o mais novo (cronológico)
+                    const sortedCheckins = [...(entry.checkins || [])].sort((a, b) => 
+                      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                    );
                     
                     return (
                       <div key={entry.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
@@ -206,12 +211,16 @@ export default function TaskModal({
                           </span>
                         </div>
                         
-                        {entry.checkins?.length > 0 && (
+                        {sortedCheckins.length > 0 && (
                           <div className="space-y-1.5 mt-2 border-l-2 border-gray-200 pl-2">
-                            {entry.checkins.map((c: any) => {
+                            {sortedCheckins.map((c: any) => {
                               const current = new Date(c.timestamp).getTime();
-                              const elapsed = current - previousTime;
-                              previousTime = current;
+                              const elapsedSinceStart = current - startMs;
+                              
+                              const pad = (n: number) => n.toString().padStart(2, '0');
+                              const h = Math.floor(elapsedSinceStart / (1000 * 60 * 60));
+                              const m = Math.floor((elapsedSinceStart % (1000 * 60 * 60)) / (1000 * 60));
+                              const s = Math.floor((elapsedSinceStart % (1000 * 60)) / 1000);
                               
                               return (
                                 <div key={c.id} className="text-xs bg-white border border-gray-100 p-2 rounded flex justify-between items-center shadow-sm group">
@@ -219,7 +228,7 @@ export default function TaskModal({
                                   <div className="flex items-center gap-3">
                                     <div className="flex flex-col items-end">
                                       <span className="text-gray-400">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                      <span className="text-emerald-600 font-bold">+{formatTime(elapsed)}</span>
+                                      <span className="text-emerald-600 font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded">{pad(h)}:{pad(m)}:{pad(s)}</span>
                                     </div>
                                     <button 
                                       onClick={() => startTransition(async () => { await deleteCheckIn(c.id); })}
