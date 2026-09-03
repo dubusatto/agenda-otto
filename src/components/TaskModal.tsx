@@ -2,7 +2,14 @@
 
 import { CalendarEvent } from "@/lib/google";
 import { useState, useEffect, useTransition } from "react";
-import { updateScheduledTaskRecurrence, deleteScheduledTask, toggleScheduledTaskCompletion } from "@/lib/actions";
+import { 
+  updateScheduledTaskRecurrence, 
+  deleteScheduledTask, 
+  toggleScheduledTaskCompletion,
+  startTimeTracking,
+  stopTimeTracking,
+  addCheckIn
+} from "@/lib/actions";
 
 const DAYS_MAP = [
   { id: 'MO', label: 'S' },
@@ -26,6 +33,7 @@ export default function TaskModal({
   const [isPending, startTransition] = useTransition();
   const [recurrenceType, setRecurrenceType] = useState<'NONE' | 'DAILY' | 'WEEKLY'>('NONE');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [checkInText, setCheckInText] = useState("");
   
   // Sync state when modal opens
   useEffect(() => {
@@ -163,6 +171,95 @@ export default function TaskModal({
                   </button>
                 </div>
               )}
+
+              {/* Time Tracking Section */}
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Time Tracking (WIP)</label>
+                
+                {(() => {
+                  const activeEntry = event.timeEntries?.find((te: any) => !te.endTime);
+                  const totalPastTimeMs = event.timeEntries?.filter((te: any) => te.endTime).reduce((acc: number, te: any) => {
+                    return acc + (new Date(te.endTime).getTime() - new Date(te.startTime).getTime());
+                  }, 0) || 0;
+                  
+                  const formatTime = (ms: number) => {
+                    if (ms === 0) return '0h 0m';
+                    const h = Math.floor(ms / (1000 * 60 * 60));
+                    const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+                    return `${h}h ${m}m`;
+                  };
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200">
+                        <span className="text-sm font-medium text-gray-600">Tempo Acumulado:</span>
+                        <span className="text-sm font-bold text-gray-900">{formatTime(totalPastTimeMs)}</span>
+                      </div>
+
+                      {!activeEntry ? (
+                        <button
+                          onClick={() => startTransition(async () => { await startTimeTracking(event.id); })}
+                          disabled={isPending}
+                          className="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 py-3 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2"
+                        >
+                          ▶️ Iniciar Tarefa
+                        </button>
+                      ) : (
+                        <div className="space-y-3 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold text-orange-700 flex items-center gap-2">
+                              <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+                              </span>
+                              Em andamento...
+                            </span>
+                            <button
+                              onClick={() => startTransition(async () => { await stopTimeTracking(event.id); })}
+                              disabled={isPending}
+                              className="text-xs bg-orange-200 text-orange-800 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-300 transition"
+                            >
+                              ⏸️ Pausar
+                            </button>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={checkInText}
+                              onChange={(e) => setCheckInText(e.target.value)}
+                              placeholder="Fase terminada..."
+                              className="flex-1 text-sm border border-orange-200 bg-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                            />
+                            <button
+                              onClick={() => startTransition(async () => { 
+                                if (!checkInText.trim()) return;
+                                await addCheckIn(event.id, checkInText); 
+                                setCheckInText("");
+                              })}
+                              disabled={isPending || !checkInText.trim()}
+                              className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-bold transition"
+                            >
+                              Check-in
+                            </button>
+                          </div>
+
+                          {activeEntry.checkins?.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {activeEntry.checkins.map((c: any) => (
+                                <div key={c.id} className="text-xs text-orange-800 bg-orange-100/50 p-2 rounded flex justify-between">
+                                  <span>{c.note}</span>
+                                  <span className="opacity-50">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
 
               <div className="pt-4 flex justify-between border-t border-gray-100 items-center">
                 <button 

@@ -21,7 +21,7 @@ export async function createScheduledTask(data: {
     data: {
       ...data,
       userEmail: session.user.email,
-    },
+    }
   });
 
   revalidatePath("/");
@@ -39,6 +39,16 @@ export async function getScheduledTasks() {
     where: {
       userEmail: session.user.email,
     },
+    include: {
+      timeEntries: {
+        include: {
+          checkins: {
+            orderBy: { timestamp: "desc" }
+          }
+        },
+        orderBy: { startTime: "desc" }
+      }
+    }
   });
 
   return tasks;
@@ -140,4 +150,61 @@ export async function updateGoogleTask(taskListId: string, taskId: string, updat
 
   revalidatePath("/");
   return res.json();
+}
+
+export async function startTimeTracking(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const baseId = id.split('-')[0];
+  const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  await prisma.timeEntry.create({
+    data: {
+      scheduledTaskId: baseId,
+      startTime: new Date()
+    }
+  });
+  revalidatePath("/");
+}
+
+export async function stopTimeTracking(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const baseId = id.split('-')[0];
+  const activeEntry = await prisma.timeEntry.findFirst({
+    where: { scheduledTaskId: baseId, endTime: null },
+    orderBy: { startTime: 'desc' }
+  });
+
+  if (activeEntry) {
+    await prisma.timeEntry.update({
+      where: { id: activeEntry.id },
+      data: { endTime: new Date() }
+    });
+    revalidatePath("/");
+  }
+}
+
+export async function addCheckIn(id: string, note: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const baseId = id.split('-')[0];
+  const activeEntry = await prisma.timeEntry.findFirst({
+    where: { scheduledTaskId: baseId, endTime: null },
+    orderBy: { startTime: 'desc' }
+  });
+
+  if (activeEntry) {
+    await prisma.checkIn.create({
+      data: {
+        timeEntryId: activeEntry.id,
+        note
+      }
+    });
+    revalidatePath("/");
+  }
 }

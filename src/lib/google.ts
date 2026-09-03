@@ -10,6 +10,7 @@ export interface CalendarEvent {
   backgroundColor?: string;
   completed?: boolean;
   rrule?: string;
+  timeEntries?: any[]; // Keep it simple for now, array of TimeEntry
 }
 
 export interface GoogleTask {

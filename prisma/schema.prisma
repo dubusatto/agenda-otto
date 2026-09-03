@@ -16,6 +16,29 @@ model ScheduledTask {
   rrule        String?
   completed    Boolean  @default(false)
   userEmail    String
+  
+  timeEntries  TimeEntry[]
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model TimeEntry {
+  id              String   @id @default(cuid())
+  scheduledTaskId String
+  scheduledTask   ScheduledTask @relation(fields: [scheduledTaskId], references: [id], onDelete: Cascade)
+  
+  startTime       DateTime
+  endTime         DateTime?
+  
+  checkins        CheckIn[]
+}
+
+model CheckIn {
+  id          String   @id @default(cuid())
+  timeEntryId String
+  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  
+  note        String
+  timestamp   DateTime @default(now())
 }

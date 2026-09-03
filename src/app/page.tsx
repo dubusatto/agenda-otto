@@ -40,6 +40,7 @@ export default async function Dashboard() {
       backgroundColor: getSemanticColor(st.googleTaskId),
       completed: st.completed,
       rrule: st.rrule || undefined,
+      timeEntries: st.timeEntries || [],
     };
 
     if (st.rrule) {
