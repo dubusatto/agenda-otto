@@ -40,13 +40,17 @@ export async function getScheduledTasks() {
       userEmail: session.user.email,
     },
     include: {
-      timeEntries: {
+      instances: {
         include: {
-          checkins: {
-            orderBy: { timestamp: "desc" }
+          timeEntries: {
+            include: {
+              checkins: {
+                orderBy: { timestamp: "desc" }
+              }
+            },
+            orderBy: { startTime: "desc" }
           }
-        },
-        orderBy: { startTime: "desc" }
+        }
       }
     }
   });
@@ -59,17 +63,39 @@ export async function toggleScheduledTaskCompletion(id: string, completed: boole
   
   if (!session || !session.user?.email) throw new Error("Unauthorized");
 
-  const baseId = id.split('-')[0];
+  const [baseId, dateString] = id.split('-');
   const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
   if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
 
-  const updated = await prisma.scheduledTask.update({
-    where: { id: baseId },
-    data: { completed },
-  });
+  if (dateString) {
+    const instanceDate = new Date(parseInt(dateString));
+    await prisma.taskInstance.upsert({
+      where: {
+        scheduledTaskId_instanceDate: {
+          scheduledTaskId: baseId,
+          instanceDate
+        }
+      },
+      create: {
+        scheduledTaskId: baseId,
+        instanceDate,
+        completed,
+        completedAt: completed ? new Date() : null
+      },
+      update: {
+        completed,
+        completedAt: completed ? new Date() : null
+      }
+    });
+  } else {
+    await prisma.scheduledTask.update({
+      where: { id: baseId },
+      data: { completed }
+    });
+  }
 
   revalidatePath("/");
-  return updated;
+  return task;
 }
 
 export async function updateScheduledTaskTime(id: string, start: Date, end: Date) {
@@ -156,16 +182,26 @@ export async function startTimeTracking(id: string) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.email) throw new Error("Unauthorized");
 
-  const baseId = id.split('-')[0];
+  const [baseId, dateString] = id.split('-');
   const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
   if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
 
+  const instanceDate = dateString ? new Date(parseInt(dateString)) : task.start;
+
+  // Ensure instance exists
+  const instance = await prisma.taskInstance.upsert({
+    where: { scheduledTaskId_instanceDate: { scheduledTaskId: baseId, instanceDate } },
+    create: { scheduledTaskId: baseId, instanceDate },
+    update: {}
+  });
+
   await prisma.timeEntry.create({
     data: {
-      scheduledTaskId: baseId,
+      taskInstanceId: instance.id,
       startTime: new Date()
     }
   });
+  
   revalidatePath("/");
 }
 
@@ -173,18 +209,37 @@ export async function stopTimeTracking(id: string) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.email) throw new Error("Unauthorized");
 
-  const baseId = id.split('-')[0];
-  const activeEntry = await prisma.timeEntry.findFirst({
-    where: { scheduledTaskId: baseId, endTime: null },
-    orderBy: { startTime: 'desc' }
-  });
+  const [baseId, dateString] = id.split('-');
+  const instanceDate = dateString ? new Date(parseInt(dateString)) : undefined;
 
-  if (activeEntry) {
-    await prisma.timeEntry.update({
-      where: { id: activeEntry.id },
-      data: { endTime: new Date() }
+  // We need to find the instance ID first
+  let taskInstanceId;
+  if (instanceDate) {
+    const inst = await prisma.taskInstance.findUnique({
+      where: { scheduledTaskId_instanceDate: { scheduledTaskId: baseId, instanceDate } }
     });
-    revalidatePath("/");
+    if (inst) taskInstanceId = inst.id;
+  } else {
+    // For non-recurring, it might be the only instance
+    const inst = await prisma.taskInstance.findFirst({
+      where: { scheduledTaskId: baseId }
+    });
+    if (inst) taskInstanceId = inst.id;
+  }
+
+  if (taskInstanceId) {
+    const activeEntry = await prisma.timeEntry.findFirst({
+      where: { taskInstanceId, endTime: null },
+      orderBy: { startTime: 'desc' }
+    });
+
+    if (activeEntry) {
+      await prisma.timeEntry.update({
+        where: { id: activeEntry.id },
+        data: { endTime: new Date() }
+      });
+      revalidatePath("/");
+    }
   }
 }
 
@@ -192,20 +247,37 @@ export async function addCheckIn(id: string, note: string) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.email) throw new Error("Unauthorized");
 
-  const baseId = id.split('-')[0];
-  const activeEntry = await prisma.timeEntry.findFirst({
-    where: { scheduledTaskId: baseId, endTime: null },
-    orderBy: { startTime: 'desc' }
-  });
+  const [baseId, dateString] = id.split('-');
+  const instanceDate = dateString ? new Date(parseInt(dateString)) : undefined;
 
-  if (activeEntry) {
-    await prisma.checkIn.create({
-      data: {
-        timeEntryId: activeEntry.id,
-        note
-      }
+  let taskInstanceId;
+  if (instanceDate) {
+    const inst = await prisma.taskInstance.findUnique({
+      where: { scheduledTaskId_instanceDate: { scheduledTaskId: baseId, instanceDate } }
     });
-    revalidatePath("/");
+    if (inst) taskInstanceId = inst.id;
+  } else {
+    const inst = await prisma.taskInstance.findFirst({
+      where: { scheduledTaskId: baseId }
+    });
+    if (inst) taskInstanceId = inst.id;
+  }
+
+  if (taskInstanceId) {
+    const activeEntry = await prisma.timeEntry.findFirst({
+      where: { taskInstanceId, endTime: null },
+      orderBy: { startTime: 'desc' }
+    });
+
+    if (activeEntry) {
+      await prisma.checkIn.create({
+        data: {
+          timeEntryId: activeEntry.id,
+          note
+        }
+      });
+      revalidatePath("/");
+    }
   }
 }
 

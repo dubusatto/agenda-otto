@@ -30,35 +30,44 @@ export default async function Dashboard() {
   // Map local DB tasks to the unified CalendarEvent interface
   // using semantic colors based on their original google task ID so they are consistent
   const mappedScheduledTasks = scheduledTasksData.flatMap(st => {
+    // If it's a one-off event without rrule, just use instance[0] if exists, or base data
+    const nonRecurringInstance = st.instances?.find(inst => inst.instanceDate.getTime() === st.start.getTime());
+    const isCompleted = nonRecurringInstance ? nonRecurringInstance.completed : st.completed;
+    
     const baseEvent = {
       id: st.id,
-      title: st.completed ? `✓ ${st.title} (Concluída)` : `✓ ${st.title}`,
+      title: isCompleted ? `✓ ${st.title} (Concluída)` : `✓ ${st.title}`,
       start: st.start,
       end: st.end,
       allDay: false,
       calendarId: 'local-db',
       backgroundColor: getSemanticColor(st.googleTaskId),
-      completed: st.completed,
+      completed: isCompleted,
       rrule: st.rrule || undefined,
-      timeEntries: st.timeEntries || [],
+      timeEntries: nonRecurringInstance?.timeEntries || [],
     };
 
     if (st.rrule) {
       try {
-        const duration = st.end.getTime() - st.start.getTime();
         const options = RRule.parseString(st.rrule);
-        options.dtstart = new Date(Date.UTC(st.start.getUTCFullYear(), st.start.getUTCMonth(), st.start.getUTCDate(), st.start.getUTCHours(), st.start.getUTCMinutes(), st.start.getUTCSeconds()));
+        options.dtstart = st.start;
+        const duration = st.end.getTime() - st.start.getTime();
         
         const rruleObj = new RRule(options);
         const occurrences = rruleObj.between(new Date(timeMin), new Date(timeMax), true);
         
-        return occurrences.map((date, i) => {
-          // Adjust UTC back to local if needed, rrule outputs UTC dates based on dtstart
+        return occurrences.map((date) => {
+          const instance = st.instances?.find(inst => inst.instanceDate.getTime() === date.getTime());
+          const instCompleted = instance?.completed || false;
+          
           return {
             ...baseEvent,
-            id: `${st.id}-${i}`,
+            id: `${st.id}-${date.getTime()}`,
+            title: instCompleted ? `✓ ${st.title} (Concluída)` : `✓ ${st.title}`,
             start: date,
-            end: new Date(date.getTime() + duration)
+            end: new Date(date.getTime() + duration),
+            completed: instCompleted,
+            timeEntries: instance?.timeEntries || []
           };
         });
       } catch (e) {
