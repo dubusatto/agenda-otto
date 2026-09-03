@@ -89,7 +89,7 @@ export default async function Dashboard() {
       </header>
       
       {/* Client-side Drag and Drop wrapper */}
-      <DashboardClient initialEvents={allEvents} tasks={tasks} />
+      <DashboardClient initialEvents={allEvents} tasks={tasks} localTasks={scheduledTasksData} />
     </div>
   );
 }

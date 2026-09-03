@@ -9,10 +9,12 @@ import { createScheduledTask } from "@/lib/actions";
 
 export default function DashboardClient({ 
   initialEvents, 
-  tasks 
+  tasks,
+  localTasks = []
 }: { 
   initialEvents: CalendarEvent[], 
-  tasks: GoogleTask[] 
+  tasks: GoogleTask[],
+  localTasks?: any[]
 }) {
   const [activeTask, setActiveTask] = useState<GoogleTask | null>(null);
 
@@ -67,7 +69,7 @@ export default function DashboardClient({
             <CalendarGrid events={initialEvents} />
           </div>
         </div>
-        <Sidebar tasks={tasks} />
+        <Sidebar tasks={tasks} localTasks={localTasks} />
       </main>
       
       {/* Visual overlay for dragging */}
