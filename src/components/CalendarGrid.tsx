@@ -57,6 +57,17 @@ function DateCellWrapper({ children, value }: any) {
   );
 }
 
+function CustomEvent({ event }: any) {
+  // O title nativo do HTML cria um tooltip quando o mouse fica em cima
+  const tooltipText = `${event.title} \n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`;
+  
+  return (
+    <div title={tooltipText} className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5">
+      <span className="font-bold text-[11px] truncate">{event.title}</span>
+    </div>
+  );
+}
+
 export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [view, setView] = useState<View>('week');
   const [date, setDate] = useState<Date>(new Date());
@@ -124,6 +135,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         components={{
           timeSlotWrapper: TimeSlotWrapper,
           dateCellWrapper: DateCellWrapper,
+          event: CustomEvent
         }}
         eventPropGetter={(event: any) => {
           return { 
@@ -133,9 +145,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
               opacity: event.completed ? 0.5 : 1, 
               color: 'white', 
               border: 'none',
-              padding: '2px 4px',
-              fontSize: '12px',
-              fontWeight: '500',
+              padding: '0',
               boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
             } 
           };
