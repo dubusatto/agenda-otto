@@ -372,3 +372,79 @@ export async function deleteGoogleTaskList(taskListId: string) {
   
   revalidatePath("/");
 }
+
+export async function cancelScheduledTaskInstance(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const [baseId, dateString] = id.split('-');
+  if (!dateString) throw new Error("Not an instance");
+
+  const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  const instanceDate = new Date(parseInt(dateString));
+  await prisma.scheduledTask.update({
+    where: { id: baseId },
+    data: {
+      exdates: {
+        push: instanceDate
+      }
+    }
+  });
+  
+  await prisma.taskInstance.deleteMany({
+    where: { scheduledTaskId: baseId, instanceDate: instanceDate }
+  });
+
+  revalidatePath("/");
+}
+
+export async function extractScheduledTaskInstance(id: string, newStart: Date, newEnd: Date) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const [baseId, dateString] = id.split('-');
+  if (!dateString) throw new Error("Not an instance");
+
+  const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  const instanceDate = new Date(parseInt(dateString));
+  
+  await prisma.scheduledTask.update({
+    where: { id: baseId },
+    data: {
+      exdates: {
+        push: instanceDate
+      }
+    }
+  });
+
+  const newTask = await prisma.scheduledTask.create({
+    data: {
+      title: task.title,
+      googleTaskId: task.googleTaskId,
+      userEmail: task.userEmail,
+      start: newStart,
+      end: newEnd,
+      rrule: null,
+    }
+  });
+
+  const oldInstance = await prisma.taskInstance.findUnique({
+    where: { scheduledTaskId_instanceDate: { scheduledTaskId: baseId, instanceDate } }
+  });
+  
+  if (oldInstance) {
+    await prisma.taskInstance.update({
+      where: { id: oldInstance.id },
+      data: {
+        scheduledTaskId: newTask.id,
+        instanceDate: newStart,
+      }
+    });
+  }
+
+  revalidatePath("/");
+}

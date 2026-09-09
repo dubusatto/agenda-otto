@@ -83,27 +83,33 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
     }
   }, [events]);
 
-  const handleEventDrop = ({ event, start, end }: EventInteractionArgs<any>) => {
-    if (event.calendarId !== 'local-db') return; // Only allow moving local scheduled tasks for now
-
-    startTransition(async () => {
-      try {
-        await updateScheduledTaskTime(event.id, new Date(start as any), new Date(end as any));
-      } catch (err) {
-        console.error("Failed to move task", err);
+  const handleEventChange = async (event: any, start: Date, end: Date) => {
+    if (event.rrule) {
+      const confirmAll = window.confirm("Você está alterando uma tarefa que se repete.\n\nClique em OK para alterar SÓ ESTE evento.\nClique em Cancelar para alterar TODOS os eventos.");
+      if (confirmAll) {
+        // Change only this one (extract)
+        const { extractScheduledTaskInstance } = await import('@/lib/actions');
+        await extractScheduledTaskInstance(event.id, start, end);
+        return;
       }
+    }
+    // Change all (or it's a non-recurring task)
+    await updateScheduledTaskTime(event.id, start, end);
+  };
+
+  const handleEventDrop = ({ event, start, end }: EventInteractionArgs<any>) => {
+    if (event.calendarId !== 'local-db') return;
+    startTransition(async () => {
+      try { await handleEventChange(event, new Date(start as any), new Date(end as any)); }
+      catch (err) { console.error("Failed to move task", err); }
     });
   };
 
   const handleEventResize = ({ event, start, end }: EventInteractionArgs<any>) => {
     if (event.calendarId !== 'local-db') return;
-
     startTransition(async () => {
-      try {
-        await updateScheduledTaskTime(event.id, new Date(start as any), new Date(end as any));
-      } catch (err) {
-        console.error("Failed to resize task", err);
-      }
+      try { await handleEventChange(event, new Date(start as any), new Date(end as any)); }
+      catch (err) { console.error("Failed to resize task", err); }
     });
   };
 

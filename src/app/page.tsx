@@ -70,7 +70,10 @@ export default async function Dashboard() {
         const rruleObj = new RRule(options);
         const occurrences = rruleObj.between(new Date(timeMin), new Date(timeMax), true);
         
-        return occurrences.map((date) => {
+        const exdatesTimes = new Set((st.exdates || []).map((d: Date) => d.getTime()));
+        const validOccurrences = occurrences.filter(d => !exdatesTimes.has(d.getTime()));
+        
+        return validOccurrences.map((date) => {
           const instance = st.instances?.find(inst => inst.instanceDate.getTime() === date.getTime());
           const instCompleted = instance?.completed || false;
           

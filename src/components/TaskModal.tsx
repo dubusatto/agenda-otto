@@ -117,10 +117,24 @@ export default function TaskModal({
 
   const handleDelete = () => {
     if (!isLocal) return;
-    startTransition(async () => {
-      await deleteScheduledTask(event.id);
-      onClose();
-    });
+    if (event.rrule) {
+      const confirmAll = window.confirm("Você está excluindo uma tarefa que se repete.\n\nClique em OK para excluir SÓ ESTE evento.\nClique em Cancelar para excluir TODOS os eventos.");
+      if (confirmAll) {
+        startTransition(async () => {
+          const { cancelScheduledTaskInstance } = await import('@/lib/actions');
+          await cancelScheduledTaskInstance(event.id);
+          onClose();
+        });
+        return;
+      }
+    }
+    
+    if (window.confirm("Tem certeza que deseja excluir esta tarefa?")) {
+      startTransition(async () => {
+        await deleteScheduledTask(event.id);
+        onClose();
+      });
+    }
   };
 
   const hasRecurrenceChanged = () => {
