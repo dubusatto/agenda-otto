@@ -22,6 +22,29 @@ const DAYS_MAP = [
   { id: 'SU', label: 'D' },
 ];
 
+function LiveTimer({ startTime }: { startTime: string }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const startMs = new Date(startTime).getTime();
+    const update = () => setElapsed(Math.max(0, Date.now() - startMs));
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  const h = Math.floor(elapsed / (1000 * 60 * 60));
+  const m = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+  const s = Math.floor((elapsed % (1000 * 60)) / 1000);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+
+  return (
+    <span className="font-mono bg-orange-200 text-orange-800 px-2 py-0.5 rounded text-xs ml-1 shadow-sm border border-orange-300">
+      {pad(h)}:{pad(m)}:{pad(s)}
+    </span>
+  );
+}
+
 export default function TaskModal({ 
   isOpen, 
   onClose, 
@@ -292,6 +315,7 @@ export default function TaskModal({
                                 <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
                               </span>
                               Trabalhando agora...
+                              <LiveTimer startTime={activeEntry.startTime} />
                             </span>
                             <button
                               onClick={() => startTransition(async () => { await stopTimeTracking(event.id); })}
