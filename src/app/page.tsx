@@ -11,7 +11,7 @@ import { RRule } from "rrule";
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
   
-  if (!session) {
+  if (!session || session.error === "RefreshAccessTokenError") {
     redirect("/api/auth/signin");
   }
 
@@ -19,14 +19,25 @@ export default async function Dashboard() {
   const timeMin = startOfMonth(now).toISOString();
   const timeMax = endOfMonth(now).toISOString();
 
-  const [googleEvents, tasks, taskLists, scheduledTasksData] = session.accessToken 
-    ? await Promise.all([
+  let googleEvents: any[] = [], tasks: any[] = [], taskLists: any[] = [], scheduledTasksData: any[] = [];
+  try {
+    if (session.accessToken) {
+      [googleEvents, tasks, taskLists, scheduledTasksData] = await Promise.all([
         getCalendarEvents(session.accessToken, timeMin, timeMax),
         getGoogleTasks(session.accessToken),
         getGoogleTaskLists(session.accessToken),
         getScheduledTasks()
-      ])
-    : [[], [], [], []];
+      ]);
+    } else {
+      scheduledTasksData = await getScheduledTasks();
+    }
+  } catch (err: any) {
+    if (err?.message?.includes("Unauthorized") || err?.message?.includes("401")) {
+      // Force sign-in if token is rejected by Google API
+      redirect("/api/auth/signin");
+    }
+    throw err;
+  }
 
   // Map local DB tasks to the unified CalendarEvent interface
   // using semantic colors based on their original google task ID so they are consistent
