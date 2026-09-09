@@ -183,17 +183,30 @@ export async function startTimeTracking(id: string) {
   if (!session || !session.user?.email) throw new Error("Unauthorized");
 
   const [baseId, dateString] = id.split('-');
-  const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
+  const task = await prisma.scheduledTask.findUnique({ 
+    where: { id: baseId },
+    include: { instances: true }
+  });
   if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
 
-  const instanceDate = dateString ? new Date(parseInt(dateString)) : task.start;
-
-  // Ensure instance exists
-  const instance = await prisma.taskInstance.upsert({
-    where: { scheduledTaskId_instanceDate: { scheduledTaskId: baseId, instanceDate } },
-    create: { scheduledTaskId: baseId, instanceDate },
-    update: {}
-  });
+  let instance;
+  if (dateString) {
+    const instanceDate = new Date(parseInt(dateString));
+    instance = await prisma.taskInstance.upsert({
+      where: { scheduledTaskId_instanceDate: { scheduledTaskId: baseId, instanceDate } },
+      create: { scheduledTaskId: baseId, instanceDate },
+      update: {}
+    });
+  } else {
+    // Non-recurring task - grab first or create one
+    if (task.instances.length > 0) {
+      instance = task.instances[0];
+    } else {
+      instance = await prisma.taskInstance.create({
+        data: { scheduledTaskId: baseId, instanceDate: task.start }
+      });
+    }
+  }
 
   await prisma.timeEntry.create({
     data: {
@@ -220,9 +233,9 @@ export async function stopTimeTracking(id: string) {
     });
     if (inst) taskInstanceId = inst.id;
   } else {
-    // For non-recurring, it might be the only instance
     const inst = await prisma.taskInstance.findFirst({
-      where: { scheduledTaskId: baseId }
+      where: { scheduledTaskId: baseId },
+      orderBy: { instanceDate: 'desc' }
     });
     if (inst) taskInstanceId = inst.id;
   }
@@ -258,7 +271,8 @@ export async function addCheckIn(id: string, note: string) {
     if (inst) taskInstanceId = inst.id;
   } else {
     const inst = await prisma.taskInstance.findFirst({
-      where: { scheduledTaskId: baseId }
+      where: { scheduledTaskId: baseId },
+      orderBy: { instanceDate: 'desc' }
     });
     if (inst) taskInstanceId = inst.id;
   }

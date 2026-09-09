@@ -31,8 +31,10 @@ export default async function Dashboard() {
   // Map local DB tasks to the unified CalendarEvent interface
   // using semantic colors based on their original google task ID so they are consistent
   const mappedScheduledTasks = scheduledTasksData.flatMap(st => {
-    // If it's a one-off event without rrule, just use instance[0] if exists, or base data
-    const nonRecurringInstance = st.instances?.find(inst => inst.instanceDate.getTime() === st.start.getTime());
+    // For non-recurring tasks, just use the first/latest instance regardless of instanceDate
+    const nonRecurringInstance = st.instances?.length > 0 
+      ? [...st.instances].sort((a, b) => b.instanceDate.getTime() - a.instanceDate.getTime())[0]
+      : undefined;
     const isCompleted = nonRecurringInstance ? nonRecurringInstance.completed : st.completed;
     
     const baseEvent = {
