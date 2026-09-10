@@ -115,18 +115,13 @@ export default function TaskModal({
     });
   };
 
+  const [pendingDeleteRecurrence, setPendingDeleteRecurrence] = useState<boolean>(false);
+
   const handleDelete = () => {
     if (!isLocal) return;
     if (event.rrule) {
-      const confirmAll = window.confirm("Você está excluindo uma tarefa que se repete.\n\nClique em OK para excluir SÓ ESTE evento.\nClique em Cancelar para excluir TODOS os eventos.");
-      if (confirmAll) {
-        startTransition(async () => {
-          const { cancelScheduledTaskInstance } = await import('@/lib/actions');
-          await cancelScheduledTaskInstance(event.id);
-          onClose();
-        });
-        return;
-      }
+      setPendingDeleteRecurrence(true);
+      return;
     }
     
     if (window.confirm("Tem certeza que deseja excluir esta tarefa?")) {
@@ -135,6 +130,19 @@ export default function TaskModal({
         onClose();
       });
     }
+  };
+
+  const executeDeleteRecurrence = async (type: 'THIS' | 'ALL') => {
+    setPendingDeleteRecurrence(false);
+    startTransition(async () => {
+      if (type === 'THIS') {
+        const { cancelScheduledTaskInstance } = await import('@/lib/actions');
+        await cancelScheduledTaskInstance(event.id);
+      } else {
+        await deleteScheduledTask(event.id);
+      }
+      onClose();
+    });
   };
 
   const hasRecurrenceChanged = () => {
@@ -409,6 +417,37 @@ export default function TaskModal({
           )}
         </div>
       </div>
+
+      {pendingDeleteRecurrence && (
+        <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-in zoom-in-95">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Tarefa Recorrente</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Você está excluindo uma tarefa recorrente. Deseja excluir apenas este evento ou todos da série?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => executeDeleteRecurrence('THIS')}
+                className="w-full text-left px-4 py-3 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg font-medium transition"
+              >
+                Apenas este evento
+              </button>
+              <button
+                onClick={() => executeDeleteRecurrence('ALL')}
+                className="w-full text-left px-4 py-3 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg font-medium transition"
+              >
+                Todos os eventos recorrentes
+              </button>
+              <button
+                onClick={() => setPendingDeleteRecurrence(false)}
+                className="w-full mt-2 px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg font-medium transition text-center"
+              >
+                Cancelar Ação
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

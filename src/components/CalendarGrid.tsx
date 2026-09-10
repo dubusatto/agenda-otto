@@ -83,18 +83,33 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
     }
   }, [events]);
 
+  const [pendingRecurrence, setPendingRecurrence] = useState<{event: any, start: Date, end: Date} | null>(null);
+
   const handleEventChange = async (event: any, start: Date, end: Date) => {
     if (event.rrule) {
-      const confirmAll = window.confirm("Você está alterando uma tarefa que se repete.\n\nClique em OK para alterar SÓ ESTE evento.\nClique em Cancelar para alterar TODOS os eventos.");
-      if (confirmAll) {
-        // Change only this one (extract)
-        const { extractScheduledTaskInstance } = await import('@/lib/actions');
-        await extractScheduledTaskInstance(event.id, start, end);
-        return;
-      }
+      setPendingRecurrence({ event, start, end });
+      return;
     }
-    // Change all (or it's a non-recurring task)
     await updateScheduledTaskTime(event.id, start, end);
+  };
+
+  const executeRecurrenceAction = async (type: 'THIS' | 'ALL') => {
+    if (!pendingRecurrence) return;
+    const { event, start, end } = pendingRecurrence;
+    setPendingRecurrence(null); // optimistically close
+    
+    startTransition(async () => {
+      try {
+        if (type === 'THIS') {
+          const { extractScheduledTaskInstance } = await import('@/lib/actions');
+          await extractScheduledTaskInstance(event.id, start, end);
+        } else {
+          await updateScheduledTaskTime(event.id, start, end);
+        }
+      } catch (err) {
+        console.error("Failed to update recurring task", err);
+      }
+    });
   };
 
   const handleEventDrop = ({ event, start, end }: EventInteractionArgs<any>) => {
@@ -168,6 +183,37 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         start={newTaskSlot?.start || null}
         end={newTaskSlot?.end || null}
       />
+
+      {pendingRecurrence && (
+        <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-in zoom-in-95">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Tarefa Recorrente</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Você está alterando uma tarefa recorrente. Deseja aplicar essa mudança apenas a este evento ou a todos da série?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => executeRecurrenceAction('THIS')}
+                className="w-full text-left px-4 py-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-medium transition"
+              >
+                Apenas este evento
+              </button>
+              <button
+                onClick={() => executeRecurrenceAction('ALL')}
+                className="w-full text-left px-4 py-3 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition"
+              >
+                Todos os eventos recorrentes
+              </button>
+              <button
+                onClick={() => setPendingRecurrence(null)}
+                className="w-full mt-2 px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg font-medium transition text-center"
+              >
+                Cancelar Ação
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
