@@ -80,7 +80,9 @@ export default function TaskModal({
       setRecurrenceType('NONE');
       setSelectedDays([]);
     }
+    setPendingDeleteRecurrence(false);
   }, [event]);
+  const [pendingDeleteRecurrence, setPendingDeleteRecurrence] = useState<boolean>(false);
 
   if (!isOpen || !event) return null;
 
@@ -115,7 +117,6 @@ export default function TaskModal({
     });
   };
 
-  const [pendingDeleteRecurrence, setPendingDeleteRecurrence] = useState<boolean>(false);
 
   const handleDelete = () => {
     if (!isLocal) return;
