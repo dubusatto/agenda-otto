@@ -272,14 +272,18 @@ export default function TaskModal({
                         
                         {sortedCheckins.length > 0 && (
                           <div className="space-y-1.5 mt-2 border-l-2 border-gray-200 pl-2">
-                            {sortedCheckins.map((c: any) => {
+                            {sortedCheckins.map((c: any, cIndex: number) => {
                               const current = new Date(c.timestamp).getTime();
-                              const elapsedSinceStart = current - startMs;
+                              const previousTime = cIndex === 0 
+                                ? startMs 
+                                : new Date(sortedCheckins[cIndex - 1].timestamp).getTime();
+                              
+                              const intervalDuration = current - previousTime;
                               
                               const pad = (n: number) => n.toString().padStart(2, '0');
-                              const h = Math.floor(elapsedSinceStart / (1000 * 60 * 60));
-                              const m = Math.floor((elapsedSinceStart % (1000 * 60 * 60)) / (1000 * 60));
-                              const s = Math.floor((elapsedSinceStart % (1000 * 60)) / 1000);
+                              const h = Math.floor(intervalDuration / (1000 * 60 * 60));
+                              const m = Math.floor((intervalDuration % (1000 * 60 * 60)) / (1000 * 60));
+                              const s = Math.floor((intervalDuration % (1000 * 60)) / 1000);
                               
                               return (
                                 <div key={c.id} className="text-xs bg-white border border-gray-100 p-2 rounded flex justify-between items-center shadow-sm group">
@@ -338,7 +342,12 @@ export default function TaskModal({
                                 <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
                               </span>
                               Trabalhando agora...
-                              <LiveTimer startTime={activeEntry.startTime} />
+                              {(() => {
+                                const lastCheckpointTime = activeEntry.checkins?.length > 0 
+                                  ? [...activeEntry.checkins].sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0].timestamp
+                                  : activeEntry.startTime;
+                                return <LiveTimer startTime={lastCheckpointTime} />;
+                              })()}
                             </span>
                             <button
                               onClick={() => startTransition(async () => { await stopTimeTracking(event.id); })}
