@@ -15,6 +15,7 @@ model ScheduledTask {
   end          DateTime
   rrule        String?
   exdates      DateTime[]
+  color        String?
   completed    Boolean  @default(false)
   userEmail    String
   

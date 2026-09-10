@@ -55,7 +55,7 @@ export default async function Dashboard() {
       end: st.end,
       allDay: false,
       calendarId: 'local-db',
-      backgroundColor: getSemanticColor(st.googleTaskId),
+      backgroundColor: st.color || getSemanticColor(st.googleTaskId),
       completed: isCompleted,
       rrule: st.rrule || undefined,
       timeEntries: nonRecurringInstance?.timeEntries || [],

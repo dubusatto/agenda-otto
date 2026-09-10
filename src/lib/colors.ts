@@ -1,4 +1,4 @@
-const VIBRANT_PALETTE = [
+export const VIBRANT_PALETTE = [
   '#f43f5e', // rose-500
   '#ec4899', // pink-500
   '#d946ef', // fuchsia-500
@@ -16,6 +16,29 @@ const VIBRANT_PALETTE = [
   '#f59e0b', // amber-500
   '#f97316', // orange-500
 ];
+
+export function getLeastUsedColor(usedColors: string[]): string {
+  const colorCounts = new Map<string, number>();
+  VIBRANT_PALETTE.forEach(c => colorCounts.set(c, 0));
+  
+  usedColors.forEach(c => {
+    if (colorCounts.has(c)) {
+      colorCounts.set(c, colorCounts.get(c)! + 1);
+    }
+  });
+
+  let leastUsed = VIBRANT_PALETTE[0];
+  let minCount = Infinity;
+
+  for (const [color, count] of colorCounts.entries()) {
+    if (count < minCount) {
+      minCount = count;
+      leastUsed = color;
+    }
+  }
+
+  return leastUsed;
+}
 
 /**
  * Returns a deterministic vibrant hex color based on a string seed.

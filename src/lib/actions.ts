@@ -17,9 +17,19 @@ export async function createScheduledTask(data: {
     throw new Error("Unauthorized");
   }
 
+  const existingTasks = await prisma.scheduledTask.findMany({
+    where: { userEmail: session.user.email },
+    select: { color: true, googleTaskId: true }
+  });
+  
+  const { getSemanticColor, getLeastUsedColor } = await import('@/lib/colors');
+  const usedColors = existingTasks.map((t: any) => t.color || getSemanticColor(t.googleTaskId));
+  const newColor = getLeastUsedColor(usedColors);
+
   const task = await prisma.scheduledTask.create({
     data: {
       ...data,
+      color: newColor,
       userEmail: session.user.email,
     }
   });
@@ -88,10 +98,19 @@ export async function toggleScheduledTaskCompletion(id: string, completed: boole
       }
     });
   } else {
-    await prisma.scheduledTask.update({
-      where: { id: baseId },
-      data: { completed }
-    });
+    await prisma.$transaction([
+      prisma.scheduledTask.update({
+        where: { id: baseId },
+        data: { completed }
+      }),
+      prisma.taskInstance.updateMany({
+        where: { scheduledTaskId: baseId },
+        data: { 
+          completed,
+          completedAt: completed ? new Date() : null
+        }
+      })
+    ]);
   }
 
   revalidatePath("/");
@@ -426,6 +445,7 @@ export async function extractScheduledTaskInstance(id: string, newStart: Date, n
       title: task.title,
       googleTaskId: task.googleTaskId,
       userEmail: task.userEmail,
+      color: task.color,
       start: newStart,
       end: newEnd,
       rrule: null,
