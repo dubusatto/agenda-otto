@@ -58,8 +58,10 @@ function DateCellWrapper({ children, value }: any) {
 }
 
 function CustomEvent({ event }: any) {
+  const tooltipText = `${event.title}\n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`;
+  
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5">
+    <div title={tooltipText} className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5">
       <span className="font-bold text-[11px] truncate">{event.title}</span>
     </div>
   );
@@ -132,7 +134,8 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         events={events}
         startAccessor="start"
         endAccessor="end"
-        tooltipAccessor={(event: any) => `${event.title}\n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`}
+        // @ts-ignore: Returning null explicitly removes the title attribute from the DOM, avoiding empty string bugs that suppress children tooltips
+        tooltipAccessor={() => null}
         view={view}
         onView={setView}
         date={date}
