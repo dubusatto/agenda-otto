@@ -353,7 +353,7 @@ export default function TaskModal({
                       {/* Histórico completo */}
                       {event.timeEntries && event.timeEntries.length > 0 && (
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                          {[...event.timeEntries].reverse().map((entry: any, i: number) => renderEntryHistory(entry, event.timeEntries!.length - 1 - i))}
+                          {[...event.timeEntries].reverse().map((entry: any, i: number) => renderEntryHistory(entry, i))}
                         </div>
                       )}
 
