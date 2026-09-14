@@ -8,6 +8,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEvent } from '@/lib/google';
 import React, { useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { useDroppable } from '@dnd-kit/core';
 import { updateScheduledTaskTime } from '@/lib/actions';
 import TaskModal from './TaskModal';
@@ -58,11 +59,43 @@ function DateCellWrapper({ children, value }: any) {
 }
 
 function CustomEvent({ event }: any) {
-  const tooltipText = `${event.title}\n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`;
-  
+  const [portal, setPortal] = useState<{ x: number, y: number } | null>(null);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    timeoutRef.current = setTimeout(() => {
+      // Ajuste básico para não estourar a tela na direita
+      const x = Math.min(rect.left, window.innerWidth - 200); 
+      setPortal({ x, y: rect.bottom + 5 });
+    }, 300);
+  };
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setPortal(null);
+  };
+
   return (
-    <div title={tooltipText} className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5">
+    <div 
+      className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <span className="font-bold text-[11px] truncate">{event.title}</span>
+      
+      {portal && document.body && createPortal(
+        <div 
+          className="fixed z-[9999] pointer-events-none bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-xl border border-gray-700 w-max"
+          style={{ left: portal.x, top: portal.y }}
+        >
+          <div className="font-bold mb-1">{event.title}</div>
+          <div className="text-gray-300">
+            {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
