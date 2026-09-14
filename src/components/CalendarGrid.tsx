@@ -135,6 +135,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         events={events}
         startAccessor="start"
         endAccessor="end"
+        tooltipAccessor={(event: any) => `${event.title} \n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`}
         view={view}
         onView={setView}
         date={date}

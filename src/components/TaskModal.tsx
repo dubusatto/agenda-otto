@@ -45,6 +45,36 @@ function LiveTimer({ startTime }: { startTime: string }) {
   );
 }
 
+function LiveTotalTimer({ pastTimeMs, activeStartTime }: { pastTimeMs: number, activeStartTime?: string }) {
+  const [elapsed, setElapsed] = useState(pastTimeMs);
+
+  useEffect(() => {
+    if (!activeStartTime) {
+      setElapsed(pastTimeMs);
+      return;
+    }
+
+    const startMs = new Date(activeStartTime).getTime();
+    const update = () => {
+      const activeElapsed = Math.max(0, Date.now() - startMs);
+      setElapsed(pastTimeMs + activeElapsed);
+    };
+    
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [pastTimeMs, activeStartTime]);
+
+  const h = Math.floor(elapsed / (1000 * 60 * 60));
+  const m = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+  const s = Math.floor((elapsed % (1000 * 60)) / 1000);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+
+  if (elapsed === 0) return <span>0h 0m</span>;
+
+  return <span className="font-mono">{pad(h)}:{pad(m)}:{pad(s)}</span>;
+}
+
 export default function TaskModal({ 
   isOpen, 
   onClose, 
@@ -315,7 +345,9 @@ export default function TaskModal({
                     <div className="space-y-4">
                       <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200">
                         <span className="text-sm font-medium text-gray-600">Tempo Acumulado:</span>
-                        <span className="text-sm font-bold text-gray-900">{formatTime(totalPastTimeMs)}</span>
+                        <span className="text-sm font-bold text-gray-900">
+                          <LiveTotalTimer pastTimeMs={totalPastTimeMs} activeStartTime={activeEntry?.startTime} />
+                        </span>
                       </div>
 
                       {/* Histórico completo */}
