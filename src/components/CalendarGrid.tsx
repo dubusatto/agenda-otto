@@ -58,9 +58,7 @@ function DateCellWrapper({ children, value }: any) {
 }
 
 function CustomEvent({ event }: any) {
-  // O title nativo do HTML cria um tooltip quando o mouse fica em cima
-  const tooltipText = `${event.title} \n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`;
-  
+  const tooltipText = `${event.title}\n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`;
   return (
     <div title={tooltipText} className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5">
       <span className="font-bold text-[11px] truncate">{event.title}</span>
@@ -135,7 +133,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         events={events}
         startAccessor="start"
         endAccessor="end"
-        tooltipAccessor={(event: any) => `${event.title} \n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`}
+        tooltipAccessor={() => ""}
         view={view}
         onView={setView}
         date={date}
