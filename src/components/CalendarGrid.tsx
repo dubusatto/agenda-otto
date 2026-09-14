@@ -58,9 +58,8 @@ function DateCellWrapper({ children, value }: any) {
 }
 
 function CustomEvent({ event }: any) {
-  const tooltipText = `${event.title}\n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`;
   return (
-    <div title={tooltipText} className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5">
+    <div className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5">
       <span className="font-bold text-[11px] truncate">{event.title}</span>
     </div>
   );
@@ -133,7 +132,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         events={events}
         startAccessor="start"
         endAccessor="end"
-        tooltipAccessor={() => ""}
+        tooltipAccessor={(event: any) => `${event.title}\n${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`}
         view={view}
         onView={setView}
         date={date}
