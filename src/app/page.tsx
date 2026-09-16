@@ -74,7 +74,7 @@ export default async function Dashboard() {
         const validOccurrences = occurrences.filter(d => !exdatesTimes.has(d.getTime()));
         
         return validOccurrences.map((date) => {
-          const instance = st.instances?.find(inst => inst.instanceDate.getTime() === date.getTime());
+          const instance = st.instances?.find((inst: any) => inst.instanceDate.getTime() === date.getTime());
           const instCompleted = instance?.completed || false;
           
           return {
