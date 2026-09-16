@@ -207,23 +207,26 @@ export default function TaskModal({
             <div className="space-y-5">
               <div className="pt-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Recorrência</label>
-                <div className="flex gap-2">
+                <div className="flex p-1 mb-4 bg-gray-100 rounded-lg">
                   <button 
-                    onClick={() => setRecurrenceType('NONE')}
+                    onClick={() => {
+                      setRecurrenceType('NONE');
+                    }}
                     disabled={isPending}
-                    className={`flex-1 py-2 px-3 border rounded-xl text-sm font-medium transition ${recurrenceType === 'NONE' ? 'bg-gray-100 border-gray-300 text-gray-800 ring-1 ring-gray-300' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                    className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all duration-200 ${recurrenceType === 'NONE' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                   >
-                    Não repete
+                    Não se repete
                   </button>
                   <button 
                     onClick={() => {
                       setRecurrenceType('WEEKLY');
                       if (selectedDays.length === 0) {
-                        setSelectedDays(DAYS_MAP.map(d => d.id)); // Default to all days (Daily) when clicking repeat
+                        const today = event.start.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().substring(0,2);
+                        setSelectedDays([today]);
                       }
                     }}
                     disabled={isPending}
-                    className={`flex-1 py-2 px-3 border rounded-xl text-sm font-medium transition ${recurrenceType === 'WEEKLY' ? 'bg-fuchsia-50 border-fuchsia-300 text-fuchsia-700 ring-1 ring-fuchsia-300' : 'bg-white border-gray-200 text-gray-600 hover:bg-fuchsia-50 hover:text-fuchsia-600'}`}
+                    className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all duration-200 ${recurrenceType === 'WEEKLY' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                   >
                     Se repete
                   </button>
@@ -316,21 +319,21 @@ export default function TaskModal({
                               const s = Math.floor((intervalDuration % (1000 * 60)) / 1000);
                               
                               return (
-                                <div key={c.id} className="text-xs bg-white border border-gray-100 p-2 rounded flex justify-between items-center shadow-sm group">
+                                <div key={c.id} className="text-xs bg-white border border-gray-100 p-3 rounded-lg flex justify-between items-center shadow-sm group">
                                   <span className="text-gray-800 font-medium">{c.note}</span>
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex flex-col items-end">
-                                      <span className="text-gray-400">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                      <span className="text-emerald-600 font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded">{pad(h)}:{pad(m)}:{pad(s)}</span>
+                                  <div className="flex flex-col items-end gap-1">
+                                    <span className="text-gray-400 leading-none mr-7">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-emerald-600 font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded leading-none">{pad(h)}:{pad(m)}:{pad(s)}</span>
+                                      <button 
+                                        onClick={() => startTransition(async () => { await deleteCheckIn(c.id); })}
+                                        disabled={isPending}
+                                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center"
+                                        title="Excluir Check-in"
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                      </button>
                                     </div>
-                                    <button 
-                                      onClick={() => startTransition(async () => { await deleteCheckIn(c.id); })}
-                                      disabled={isPending}
-                                      className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      title="Excluir Check-in"
-                                    >
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                    </button>
                                   </div>
                                 </div>
                               );
@@ -366,7 +369,7 @@ export default function TaskModal({
                           ▶️ Iniciar Sessão de Trabalho
                         </button>
                       ) : (
-                        <div className="space-y-3 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                        <div className="space-y-3 p-4 bg-[#fff8f5] border border-orange-200 rounded-xl">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-bold text-orange-700 flex items-center gap-2">
                               <span className="relative flex h-3 w-3">
@@ -417,7 +420,7 @@ export default function TaskModal({
                 })()}
               </div>
 
-              <div className="pt-4 flex justify-between border-t border-gray-100 items-center">
+              <div className="pt-4 flex items-center justify-between border-t border-gray-100">
                 <button 
                   onClick={handleDelete}
                   disabled={isPending}
@@ -427,6 +430,12 @@ export default function TaskModal({
                 </button>
                 <div className="flex gap-2">
                   <button 
+                    onClick={onClose}
+                    className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
+                  >
+                    Fechar
+                  </button>
+                  <button 
                     onClick={() => {
                       startTransition(async () => {
                         await toggleScheduledTaskCompletion(event.id, !event.completed);
@@ -434,15 +443,9 @@ export default function TaskModal({
                       });
                     }}
                     disabled={isPending}
-                    className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
                   >
                     {event.completed ? 'Reabrir Tarefa' : 'Marcar Concluída'}
-                  </button>
-                  <button 
-                    onClick={onClose}
-                    className="bg-gray-900 text-white hover:bg-gray-800 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
-                  >
-                    Fechar
                   </button>
                 </div>
               </div>
@@ -451,7 +454,7 @@ export default function TaskModal({
              <div className="pt-4 flex justify-end border-t border-gray-100">
                 <button 
                   onClick={onClose}
-                  className="bg-gray-900 text-white hover:bg-gray-800 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
+                  className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
                 >
                   Fechar
                 </button>
