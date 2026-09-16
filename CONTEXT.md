@@ -24,3 +24,8 @@ The automated visual styling where Tasks and Events are assigned specific vibran
 **Agenda**:
 The main interactive interface (built with React/Next.js) where both Events and Tasks are visualized and manipulated.
 _Avoid_: Tela inicial, Painel
+
+## Infrastructure
+- **Database**: Cloud-hosted on **Neon** (`neon.tech`). The application connects to it via Prisma using the `DATABASE_URL` in the `.env` file.
+- **Application Hosting**: Currently strictly local (`localhost`). It has **not** been deployed to Vercel or any other cloud provider yet.
+- **Version Control**: Hosted on GitHub (`dubusatto/agenda-otto`).
