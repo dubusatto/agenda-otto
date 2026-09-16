@@ -392,6 +392,35 @@ export async function deleteGoogleTaskList(taskListId: string) {
   revalidatePath("/");
 }
 
+export async function deleteGoogleTask(taskListId: string, taskId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.accessToken) throw new Error("Unauthorized");
+
+  const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${taskListId}/tasks/${taskId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${session.accessToken}` }
+  });
+  if (!res.ok) throw new Error(`Failed to delete task`);
+  
+  revalidatePath("/");
+}
+
+export async function clearOldCompletedTasks(tasks: {taskListId: string, taskId: string}[]) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.accessToken) throw new Error("Unauthorized");
+
+  // Fire all deletes concurrently
+  const promises = tasks.map(t => 
+    fetch(`https://tasks.googleapis.com/tasks/v1/lists/${t.taskListId}/tasks/${t.taskId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.accessToken}` }
+    })
+  );
+  
+  await Promise.allSettled(promises);
+  revalidatePath("/");
+}
+
 export async function cancelScheduledTaskInstance(id: string) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.email) throw new Error("Unauthorized");

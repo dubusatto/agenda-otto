@@ -20,6 +20,7 @@ export interface GoogleTask {
   status: string;
   due?: string; // ISO date string if any
   taskListId: string;
+  completedAt?: string;
 }
 
 // Google API helper to reduce duplication
@@ -86,7 +87,7 @@ export async function getGoogleTasks(accessToken: string): Promise<GoogleTask[]>
   // 2. Fetch tasks for each list
   const tasksPromises = taskLists.map(async (list: any) => {
     try {
-      const data = await googleFetch(`https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks?showCompleted=false`, accessToken);
+      const data = await googleFetch(`https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks?showCompleted=true&showHidden=true`, accessToken);
       const rawTasks = data.items || [];
       
       return rawTasks.map((t: any): GoogleTask => ({
@@ -95,7 +96,8 @@ export async function getGoogleTasks(accessToken: string): Promise<GoogleTask[]>
         notes: t.notes,
         status: t.status,
         due: t.due,
-        taskListId: list.id
+        taskListId: list.id,
+        completedAt: t.completed,
       }));
     } catch (err) {
       console.warn(`Failed to fetch tasks for list ${list.id}`, err);

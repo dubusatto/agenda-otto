@@ -194,8 +194,8 @@ export default function TaskModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onPointerDown={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative" onPointerDown={(e) => e.stopPropagation()}>
         <div className="h-4 w-full" style={{ backgroundColor: event.backgroundColor }}></div>
         <div className="p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{event.title}</h2>
@@ -461,8 +461,8 @@ export default function TaskModal({
       </div>
 
       {pendingDeleteRecurrence && (
-        <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-in zoom-in-95">
+        <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4" onPointerDown={() => setShowRecurrenceDeletePrompt(false)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-in zoom-in-95" onPointerDown={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Tarefa Recorrente</h3>
             <p className="text-sm text-gray-600 mb-6">
               Você está excluindo uma tarefa recorrente. Deseja excluir apenas este evento ou todos da série?

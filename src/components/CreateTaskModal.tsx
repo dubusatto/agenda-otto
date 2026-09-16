@@ -41,8 +41,8 @@ export default function CreateTaskModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-gray-200">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onPointerDown={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-gray-200" onPointerDown={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
           <h2 className="text-xl font-bold text-gray-900">Agendar Nova Tarefa</h2>
           <p className="text-sm text-gray-500 mt-1">

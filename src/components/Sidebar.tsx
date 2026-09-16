@@ -4,13 +4,14 @@ import { GoogleTask, TaskList } from "@/lib/google";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition } from "react";
-import { updateGoogleTask, createGoogleTask, createGoogleTaskList, deleteGoogleTaskList } from "@/lib/actions";
+import { updateGoogleTask, createGoogleTask, createGoogleTaskList, deleteGoogleTaskList, clearOldCompletedTasks } from "@/lib/actions";
 import { getSemanticColor } from "@/lib/colors";
 
-function DraggableTask({ task, scheduledTask }: { task: GoogleTask, scheduledTask: any }) {
+function DraggableTask({ task, scheduledTask, readOnly = false }: { task: GoogleTask, scheduledTask: any, readOnly?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
-    data: task
+    data: task,
+    disabled: readOnly
   });
 
   const [isPending, startTransition] = useTransition();
@@ -18,19 +19,25 @@ function DraggableTask({ task, scheduledTask }: { task: GoogleTask, scheduledTas
   const [title, setTitle] = useState(task.title);
 
   const taskColor = getSemanticColor(task.id);
+  const isCompleted = task.status === 'completed';
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging || isPending ? 0.4 : 1,
+    opacity: isDragging || isPending || isCompleted ? 0.4 : 1,
   };
 
-  const handleComplete = () => {
+  const handleToggleComplete = () => {
+    if (readOnly) return;
     startTransition(async () => {
-      await updateGoogleTask(task.taskListId, task.id, { status: 'completed' });
+      await updateGoogleTask(task.taskListId, task.id, { status: isCompleted ? 'needsAction' : 'completed' });
     });
   };
 
   const saveTitle = () => {
+    if (readOnly) {
+      setIsEditing(false);
+      return;
+    }
     setIsEditing(false);
     if (title.trim() !== task.title && title.trim() !== '') {
       startTransition(async () => {
@@ -48,33 +55,35 @@ function DraggableTask({ task, scheduledTask }: { task: GoogleTask, scheduledTas
     <div 
       ref={setNodeRef}
       style={{ ...style, borderLeftColor: taskColor, borderLeftWidth: '4px' }}
-      className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all relative z-20 group"
+      className={`p-3 bg-white border border-gray-200 rounded-lg shadow-sm transition-all relative z-20 group ${readOnly ? '' : 'hover:shadow-md'}`}
     >
       <div className="flex items-start gap-2">
         {/* Drag Handle */}
-        <div 
-          {...listeners}
-          {...attributes}
-          className="mt-1 cursor-grab opacity-30 hover:opacity-100 transition-opacity"
-          title="Arrastar para o calendário"
-          style={{ color: taskColor }}
-        >
-          <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
-            <path d="M4 2a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm-8 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm-8 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-        </div>
+        {!readOnly && (
+          <div 
+            {...listeners}
+            {...attributes}
+            className="mt-1 cursor-grab opacity-30 hover:opacity-100 transition-opacity"
+            title="Arrastar para o calendário"
+            style={{ color: taskColor }}
+          >
+            <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
+              <path d="M4 2a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm-8 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm-8 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+        )}
 
         <input 
           type="checkbox" 
-          checked={false} // Uncontrolled issues fixed
-          onChange={handleComplete}
-          disabled={isPending}
-          className="mt-1 h-4 w-4 rounded cursor-pointer" 
+          checked={isCompleted}
+          onChange={handleToggleComplete}
+          disabled={isPending || readOnly}
+          className={`mt-1 h-4 w-4 rounded ${readOnly ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`} 
           style={{ accentColor: taskColor }}
         />
         
         <div className="flex-1">
-          {isEditing ? (
+          {isEditing && !readOnly ? (
             <input
               type="text"
               value={title}
@@ -116,6 +125,8 @@ function DraggableTask({ task, scheduledTask }: { task: GoogleTask, scheduledTas
   );
 }
 
+import { startOfWeek } from 'date-fns';
+
 export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: GoogleTask[], taskLists: TaskList[], localTasks?: any[] }) {
   const [expandedLists, setExpandedLists] = useState<Record<string, boolean>>({});
   
@@ -128,7 +139,24 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
     setExpandedLists(prev => ({ ...prev, [listId]: !prev[listId] }));
   };
 
-  const pendingTasks = tasks.filter(t => t.status !== 'completed');
+  const startOfCurrentSprint = startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday 00:00
+
+  // Active tasks = Pending + Completed within current sprint
+  const activeTasks = tasks.filter(t => {
+    if (t.status !== 'completed') return true;
+    if (t.status === 'completed' && t.completedAt) {
+      return new Date(t.completedAt) >= startOfCurrentSprint;
+    }
+    return false; // se tiver completed mas sem data, escondemos
+  });
+
+  const archivedTasks = tasks.filter(t => {
+    if (t.status === 'completed') {
+      if (!t.completedAt) return true; // se completou e não tem data, joga pro arquivo
+      return new Date(t.completedAt) < startOfCurrentSprint;
+    }
+    return false;
+  });
 
   return (
     <aside className="w-80 bg-gray-50 border-l border-gray-200 flex flex-col h-full z-20">
@@ -180,7 +208,7 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {taskLists.map(list => {
           const isExpanded = expandedLists[list.id];
-          const listTasks = pendingTasks.filter(t => t.taskListId === list.id);
+          const listTasks = activeTasks.filter(t => t.taskListId === list.id);
           
           return (
             <div key={list.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -259,6 +287,56 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
             </div>
           );
         })}
+        
+        {/* Virtual List: Concluídas */}
+        {archivedTasks.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+            <div 
+              onClick={() => toggleList('virtual-concluidas')}
+              className="p-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition select-none group"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 text-xs">{expandedLists['virtual-concluidas'] ? '▼' : '▶'}</span>
+                <span className="font-bold text-gray-800 text-sm">Concluídas 🗄️</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-gray-100 text-gray-600 font-bold px-2 py-0.5 rounded-full">
+                  {archivedTasks.length}
+                </span>
+                <button 
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1 transition opacity-0 group-hover:opacity-100 font-bold text-xs px-2"
+                  disabled={isPending}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if(confirm('Isso excluirá DEFINITIVAMENTE todas essas tarefas antigas do sistema. Tem certeza?')) {
+                      startTransition(async () => {
+                        await clearOldCompletedTasks(archivedTasks.map(t => ({ taskId: t.id, taskListId: t.taskListId })));
+                      });
+                    }
+                  }}
+                  title="Limpar Histórico"
+                >
+                  Limpar
+                </button>
+              </div>
+            </div>
+            
+            {expandedLists['virtual-concluidas'] && (
+              <div className="p-3 pt-0 bg-gray-50/50 border-t border-gray-100 animate-in fade-in slide-in-from-top-1">
+                <div className="space-y-2 mt-3">
+                  {archivedTasks.map((task) => (
+                    <DraggableTask 
+                      key={task.id} 
+                      task={task} 
+                      scheduledTask={null}
+                      readOnly={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </aside>
   );
