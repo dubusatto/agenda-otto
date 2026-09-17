@@ -394,12 +394,12 @@ export default function TaskModal({
                           </div>
                           
                           <div className="flex gap-2">
-                            <input 
-                              type="text" 
+                            <textarea 
                               value={checkInText}
                               onChange={(e) => setCheckInText(e.target.value)}
                               placeholder="Finalizei a tela inicial..."
-                              className="flex-1 text-sm text-gray-900 placeholder:text-orange-400 border border-orange-200 bg-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                              rows={2}
+                              className="flex-1 text-sm text-gray-900 placeholder:text-orange-400 border border-orange-200 bg-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none overflow-y-auto"
                             />
                             <button
                               onClick={() => startTransition(async () => { 
@@ -408,7 +408,7 @@ export default function TaskModal({
                                 setCheckInText("");
                               })}
                               disabled={isPending || !checkInText.trim()}
-                              className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-bold transition"
+                              className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-bold transition self-end h-fit"
                             >
                               Check-in
                             </button>
