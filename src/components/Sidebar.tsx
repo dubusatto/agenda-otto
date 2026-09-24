@@ -234,7 +234,7 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs bg-gray-100 text-gray-600 font-bold px-2 py-0.5 rounded-full">
-                    {listTasks.length}
+                    {listTasks.filter(t => t.status === 'completed').length}/{listTasks.length}
                   </span>
                   <button 
                     className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded p-1 transition opacity-0 group-hover:opacity-100"
