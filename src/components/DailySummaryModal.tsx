@@ -29,17 +29,27 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
     t.status === 'completed' && t.completedAt && isToday(new Date(t.completedAt))
   ).sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
 
-  // Filtrar check-ins de hoje
-  const checkinsToday: { taskTitle: string; note: string; timestamp: Date }[] = [];
+  const checkinsToday: { taskTitle: string; note: string; timestamp: Date; durationMs: number }[] = [];
   localTasks.forEach(task => {
     task.instances?.forEach((instance: any) => {
       instance.timeEntries?.forEach((entry: any) => {
-        entry.checkins?.forEach((checkin: any) => {
+        // Ordena cronologicamente para calcular o tempo percorrido
+        const sortedCheckins = [...(entry.checkins || [])].sort(
+          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+        
+        sortedCheckins.forEach((checkin: any, index: number) => {
           if (isToday(new Date(checkin.timestamp))) {
+            const currentMs = new Date(checkin.timestamp).getTime();
+            const previousMs = index === 0 
+              ? new Date(entry.startTime).getTime() 
+              : new Date(sortedCheckins[index - 1].timestamp).getTime();
+              
             checkinsToday.push({
               taskTitle: task.title,
               note: checkin.note,
-              timestamp: new Date(checkin.timestamp)
+              timestamp: new Date(checkin.timestamp),
+              durationMs: currentMs - previousMs
             });
           }
         });
@@ -107,17 +117,29 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
               <p className="text-sm text-gray-400 italic">Nenhum check-in feito hoje.</p>
             ) : (
               <ul className="space-y-3">
-                {checkinsToday.map((checkin, index) => (
-                  <li key={index} className="text-sm bg-orange-50/50 border border-orange-100 p-3 rounded-lg">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-bold text-orange-800">{checkin.taskTitle}</span>
-                      <span className="text-xs text-orange-400 font-medium">
-                        {checkin.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 mt-1 whitespace-pre-wrap">{checkin.note}</p>
-                  </li>
-                ))}
+                {checkinsToday.map((checkin, index) => {
+                  const pad = (n: number) => n.toString().padStart(2, '0');
+                  const h = Math.floor(checkin.durationMs / (1000 * 60 * 60));
+                  const m = Math.floor((checkin.durationMs % (1000 * 60 * 60)) / (1000 * 60));
+                  const s = Math.floor((checkin.durationMs % (1000 * 60)) / 1000);
+
+                  return (
+                    <li key={index} className="text-sm bg-orange-50/50 border border-orange-100 p-3 rounded-lg flex flex-col gap-1">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-orange-800">{checkin.taskTitle}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-600 font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded leading-none text-xs border border-emerald-100/50">
+                            {pad(h)}:{pad(m)}:{pad(s)}
+                          </span>
+                          <span className="text-xs text-orange-400 font-medium">
+                            {checkin.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 whitespace-pre-wrap">{checkin.note}</p>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
