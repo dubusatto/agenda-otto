@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition } from "react";
 import { updateGoogleTask, createGoogleTask, createGoogleTaskList, deleteGoogleTaskList, clearOldCompletedTasks } from "@/lib/actions";
 import { getSemanticColor } from "@/lib/colors";
+import DailySummaryModal from "./DailySummaryModal";
 
 function DraggableTask({ task, scheduledTask, readOnly = false }: { task: GoogleTask, scheduledTask: any, readOnly?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -158,7 +159,10 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
     return false;
   });
 
+  const [isDailySummaryOpen, setIsDailySummaryOpen] = useState(false);
+
   return (
+    <>
     <aside className="w-80 bg-gray-50 border-l border-gray-200 flex flex-col h-full z-20">
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex justify-between items-center mb-1">
@@ -170,7 +174,15 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
             + Lista
           </button>
         </div>
-        <p className="text-sm text-gray-500 font-medium mb-3">Organize e arraste</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm text-gray-500 font-medium">Organize e arraste</p>
+          <button 
+            onClick={() => setIsDailySummaryOpen(true)}
+            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 rounded transition flex items-center gap-1"
+          >
+            <span>📊</span> Hoje
+          </button>
+        </div>
         
         {isCreatingList && (
           <form 
@@ -339,5 +351,12 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
         )}
       </div>
     </aside>
+      <DailySummaryModal 
+        isOpen={isDailySummaryOpen} 
+        onClose={() => setIsDailySummaryOpen(false)} 
+        tasks={tasks} 
+        localTasks={localTasks} 
+      />
+    </>
   );
 }
