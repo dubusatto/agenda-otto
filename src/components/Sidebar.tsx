@@ -180,7 +180,7 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
             onClick={() => setIsDailySummaryOpen(true)}
             className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 rounded transition flex items-center gap-1"
           >
-            <span>📊</span> Hoje
+            <span>📊</span> Diário
           </button>
         </div>
         

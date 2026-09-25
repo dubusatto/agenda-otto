@@ -1,8 +1,9 @@
 "use client";
 
 import { GoogleTask } from "@/lib/google";
-import { isToday } from "date-fns";
-import { useEffect } from "react";
+import { isSameDay, isToday, addDays, subDays, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { useEffect, useState } from "react";
 
 interface DailySummaryModalProps {
   isOpen: boolean;
@@ -12,6 +13,14 @@ interface DailySummaryModalProps {
 }
 
 export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }: DailySummaryModalProps) {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate(new Date()); // Sempre volta pra hoje ao abrir
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -24,12 +33,13 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
 
   if (!isOpen) return null;
 
-  // Filtrar tarefas do Google concluídas hoje
-  const completedToday = tasks.filter(t => 
-    t.status === 'completed' && t.completedAt && isToday(new Date(t.completedAt))
+  // Filtrar tarefas do Google concluídas no dia selecionado
+  const completedOnDate = tasks.filter(t => 
+    t.status === 'completed' && t.completedAt && isSameDay(new Date(t.completedAt), selectedDate)
   ).sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
 
-  const checkinsToday: { taskTitle: string; note: string; timestamp: Date; durationMs: number }[] = [];
+  // Filtrar check-ins do dia selecionado
+  const checkinsOnDate: { taskTitle: string; note: string; timestamp: Date; durationMs: number }[] = [];
   localTasks.forEach(task => {
     task.instances?.forEach((instance: any) => {
       instance.timeEntries?.forEach((entry: any) => {
@@ -39,13 +49,13 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
         );
         
         sortedCheckins.forEach((checkin: any, index: number) => {
-          if (isToday(new Date(checkin.timestamp))) {
+          if (isSameDay(new Date(checkin.timestamp), selectedDate)) {
             const currentMs = new Date(checkin.timestamp).getTime();
             const previousMs = index === 0 
               ? new Date(entry.startTime).getTime() 
               : new Date(sortedCheckins[index - 1].timestamp).getTime();
               
-            checkinsToday.push({
+            checkinsOnDate.push({
               taskTitle: task.title,
               note: checkin.note,
               timestamp: new Date(checkin.timestamp),
@@ -57,7 +67,11 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
     });
   });
 
-  checkinsToday.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  checkinsOnDate.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+  const formattedDate = isToday(selectedDate) 
+    ? "Hoje, " + format(selectedDate, "dd 'de' MMM", { locale: ptBR })
+    : format(selectedDate, "dd 'de' MMMM", { locale: ptBR });
 
   return (
     <div 
@@ -68,13 +82,43 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-blue-50/50">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3 sm:gap-0 items-center justify-between bg-blue-50/50">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span>📝</span> Resumo de Hoje
+            <span>📝</span> Diário
           </h2>
+          
+          {/* Navegador de Data */}
+          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+            <button 
+              onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+              className="p-1 hover:bg-gray-100 rounded text-gray-500 transition"
+              title="Dia Anterior"
+            >
+              ◀
+            </button>
+            <span className="text-sm font-bold text-gray-700 min-w-[120px] text-center">
+              {formattedDate}
+            </span>
+            <button 
+              onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+              className="p-1 hover:bg-gray-100 rounded text-gray-500 transition"
+              title="Próximo Dia"
+            >
+              ▶
+            </button>
+            {!isToday(selectedDate) && (
+              <button 
+                onClick={() => setSelectedDate(new Date())}
+                className="ml-1 text-xs bg-blue-100 text-blue-700 font-bold px-2 py-1 rounded hover:bg-blue-200 transition"
+              >
+                Hoje
+              </button>
+            )}
+          </div>
+
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition"
+            className="hidden sm:block text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition"
           >
             ✕
           </button>
@@ -86,13 +130,13 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
           <section>
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              Tarefas Concluídas ({completedToday.length})
+              Tarefas Concluídas ({completedOnDate.length})
             </h3>
-            {completedToday.length === 0 ? (
-              <p className="text-sm text-gray-400 italic">Nenhuma tarefa concluída hoje.</p>
+            {completedOnDate.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Nenhuma tarefa concluída neste dia.</p>
             ) : (
               <ul className="space-y-2">
-                {completedToday.map(task => (
+                {completedOnDate.map(task => (
                   <li key={task.id} className="text-sm bg-gray-50 border border-gray-100 p-3 rounded-lg flex items-start gap-3">
                     <span className="text-green-500 mt-0.5">✓</span>
                     <div>
@@ -111,13 +155,13 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
           <section>
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-              Check-ins do Dia ({checkinsToday.length})
+              Check-ins ({checkinsOnDate.length})
             </h3>
-            {checkinsToday.length === 0 ? (
-              <p className="text-sm text-gray-400 italic">Nenhum check-in feito hoje.</p>
+            {checkinsOnDate.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Nenhum check-in feito neste dia.</p>
             ) : (
               <ul className="space-y-3">
-                {checkinsToday.map((checkin, index) => {
+                {checkinsOnDate.map((checkin, index) => {
                   const pad = (n: number) => n.toString().padStart(2, '0');
                   const h = Math.floor(checkin.durationMs / (1000 * 60 * 60));
                   const m = Math.floor((checkin.durationMs % (1000 * 60 * 60)) / (1000 * 60));
