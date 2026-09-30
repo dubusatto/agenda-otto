@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { getCalendarEvents, getGoogleTasks, getGoogleTaskLists } from "@/lib/google";
 import { getScheduledTasks, createScheduledTask } from "@/lib/actions";
 import DashboardClient from "@/components/DashboardClient";
-import { startOfMonth, endOfMonth, addHours } from "date-fns";
+import { addHours, subMonths, addMonths } from "date-fns";
 import { getSemanticColor } from "@/lib/colors";
 import { RRule } from "rrule";
 
@@ -16,8 +16,8 @@ export default async function Dashboard() {
   }
 
   const now = new Date();
-  const timeMin = startOfMonth(now).toISOString();
-  const timeMax = endOfMonth(now).toISOString();
+  const timeMin = subMonths(now, 2).toISOString();
+  const timeMax = addMonths(now, 2).toISOString();
 
   let googleEvents: any[] = [], tasks: any[] = [], taskLists: any[] = [], scheduledTasksData: any[] = [];
   try {
