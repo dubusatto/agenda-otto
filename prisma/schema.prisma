@@ -52,10 +52,11 @@ model TimeEntry {
 }
 
 model CheckIn {
-  id          String   @id @default(cuid())
-  timeEntryId String
-  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  timeEntryId      String
+  timeEntry        TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
   
-  note        String
-  timestamp   DateTime @default(now())
+  note             String
+  hasLunchDiscount Boolean  @default(false)
+  timestamp        DateTime @default(now())
 }

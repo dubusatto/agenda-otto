@@ -9,7 +9,8 @@ import {
   startTimeTracking,
   stopTimeTracking,
   addCheckIn,
-  deleteCheckIn
+  deleteCheckIn,
+  toggleCheckInLunchDiscount
 } from "@/lib/actions";
 
 const DAYS_MAP = [
@@ -45,25 +46,25 @@ function LiveTimer({ startTime }: { startTime: string }) {
   );
 }
 
-function LiveTotalTimer({ pastTimeMs, activeStartTime }: { pastTimeMs: number, activeStartTime?: string }) {
-  const [elapsed, setElapsed] = useState(pastTimeMs);
+function LiveTotalTimer({ pastTimeMs, activeStartTime, lunchDiscountMs = 0 }: { pastTimeMs: number, activeStartTime?: string, lunchDiscountMs?: number }) {
+  const [elapsed, setElapsed] = useState(Math.max(0, pastTimeMs - lunchDiscountMs));
 
   useEffect(() => {
     if (!activeStartTime) {
-      setElapsed(pastTimeMs);
+      setElapsed(Math.max(0, pastTimeMs - lunchDiscountMs));
       return;
     }
 
     const startMs = new Date(activeStartTime).getTime();
     const update = () => {
       const activeElapsed = Math.max(0, Date.now() - startMs);
-      setElapsed(pastTimeMs + activeElapsed);
+      setElapsed(Math.max(0, pastTimeMs + activeElapsed - lunchDiscountMs));
     };
     
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [pastTimeMs, activeStartTime]);
+  }, [pastTimeMs, activeStartTime, lunchDiscountMs]);
 
   const h = Math.floor(elapsed / (1000 * 60 * 60));
   const m = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
@@ -193,12 +194,22 @@ export default function TaskModal({
     return originalRrule !== newRrule;
   };
 
+  const allCheckinsInTask = (event.timeEntries || []).flatMap((te: any) => te.checkins || []);
+  const hasLunchDiscountApplied = allCheckinsInTask.some((c: any) => c.hasLunchDiscount);
+
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onPointerDown={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative" onPointerDown={(e) => e.stopPropagation()}>
         <div className="h-4 w-full" style={{ backgroundColor: event.backgroundColor }}></div>
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">{event.title}</h2>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <h2 className="text-2xl font-bold text-gray-800">{event.title}</h2>
+            {hasLunchDiscountApplied && (
+              <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-2.5 py-1 rounded-full shadow-xs">
+                <span>🥪</span> Almoço Descontado (-1h)
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500 mb-6 font-medium">
             {event.start.toLocaleDateString()} das {event.start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} às {event.end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
           </p>
@@ -311,24 +322,68 @@ export default function TaskModal({
                                 ? startMs 
                                 : new Date(sortedCheckins[cIndex - 1].timestamp).getTime();
                               
-                              const intervalDuration = current - previousTime;
+                              const rawInterval = current - previousTime;
+                              const intervalDuration = c.hasLunchDiscount 
+                                ? Math.max(0, rawInterval - 60 * 60 * 1000)
+                                : rawInterval;
                               
                               const pad = (n: number) => n.toString().padStart(2, '0');
                               const h = Math.floor(intervalDuration / (1000 * 60 * 60));
                               const m = Math.floor((intervalDuration % (1000 * 60 * 60)) / (1000 * 60));
                               const s = Math.floor((intervalDuration % (1000 * 60)) / 1000);
                               
+                              const isAnotherCheckInDiscounted = hasLunchDiscountApplied && !c.hasLunchDiscount;
+
                               return (
                                 <div key={c.id} className="text-xs bg-white border border-gray-100 p-3 rounded-lg flex justify-between items-center shadow-sm group">
-                                  <span className="text-gray-800 font-medium">{c.note}</span>
+                                  <div className="flex flex-col gap-0.5 max-w-[55%]">
+                                    <span className="text-gray-800 font-medium break-words">{c.note}</span>
+                                    {c.hasLunchDiscount && (
+                                      <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-1">
+                                        <span>🥪</span> Almoço deduzido (-1h)
+                                      </span>
+                                    )}
+                                  </div>
                                   <div className="flex flex-col items-end gap-1">
-                                    <span className="text-gray-400 leading-none mr-7">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-emerald-600 font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded leading-none">{pad(h)}:{pad(m)}:{pad(s)}</span>
+                                    <span className="text-gray-400 leading-none mr-1">{new Date(c.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      {/* Botão de Almoço -1h */}
+                                      {c.hasLunchDiscount ? (
+                                        <button
+                                          onClick={() => startTransition(async () => { await toggleCheckInLunchDiscount(c.id); })}
+                                          disabled={isPending}
+                                          className="text-[11px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer"
+                                          title="Almoço aplicado (-1h). Clique para remover."
+                                        >
+                                          <span>🥪</span> -1h
+                                        </button>
+                                      ) : isAnotherCheckInDiscounted ? (
+                                        <button
+                                          disabled
+                                          className="text-[11px] font-bold bg-gray-100 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded cursor-not-allowed opacity-40 flex items-center gap-1"
+                                          title="O almoço já foi descontado em outro check-in desta tarefa"
+                                        >
+                                          <span>🥪</span> -1h
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() => startTransition(async () => { await toggleCheckInLunchDiscount(c.id); })}
+                                          disabled={isPending}
+                                          className="text-[11px] font-bold bg-gray-50 hover:bg-amber-50 text-gray-500 hover:text-amber-700 border border-gray-200 hover:border-amber-200 px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer"
+                                          title="Descontar 1h de almoço deste check-in"
+                                        >
+                                          <span>🥪</span> -1h
+                                        </button>
+                                      )}
+
+                                      <span className={`font-mono font-bold px-1.5 py-0.5 rounded leading-none text-xs ${c.hasLunchDiscount ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-emerald-50 text-emerald-600'}`}>
+                                        {pad(h)}:{pad(m)}:{pad(s)}
+                                      </span>
+
                                       <button 
                                         onClick={() => startTransition(async () => { await deleteCheckIn(c.id); })}
                                         disabled={isPending}
-                                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center"
+                                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center ml-1"
                                         title="Excluir Check-in"
                                       >
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -349,7 +404,11 @@ export default function TaskModal({
                       <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200">
                         <span className="text-sm font-medium text-gray-600">Tempo Acumulado:</span>
                         <span className="text-sm font-bold text-gray-900">
-                          <LiveTotalTimer pastTimeMs={totalPastTimeMs} activeStartTime={activeEntry?.startTime} />
+                          <LiveTotalTimer 
+                            pastTimeMs={totalPastTimeMs} 
+                            activeStartTime={activeEntry?.startTime} 
+                            lunchDiscountMs={hasLunchDiscountApplied ? 60 * 60 * 1000 : 0} 
+                          />
                         </span>
                       </div>
 

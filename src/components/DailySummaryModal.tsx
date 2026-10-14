@@ -3,7 +3,8 @@
 import { GoogleTask } from "@/lib/google";
 import { isSameDay, isToday, addDays, subDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { toggleCheckInLunchDiscount } from "@/lib/actions";
 
 interface DailySummaryModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface DailySummaryModalProps {
 
 export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }: DailySummaryModalProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (isOpen) {
@@ -39,7 +41,16 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
   ).sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
 
   // Filtrar check-ins do dia selecionado
-  const checkinsOnDate: { taskTitle: string; note: string; timestamp: Date; durationMs: number }[] = [];
+  const checkinsOnDate: { 
+    id: string; 
+    taskId: string; 
+    taskTitle: string; 
+    note: string; 
+    timestamp: Date; 
+    durationMs: number; 
+    hasLunchDiscount: boolean; 
+  }[] = [];
+
   localTasks.forEach(task => {
     task.instances?.forEach((instance: any) => {
       instance.timeEntries?.forEach((entry: any) => {
@@ -55,11 +66,19 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
               ? new Date(entry.startTime).getTime() 
               : new Date(sortedCheckins[index - 1].timestamp).getTime();
               
+            const rawDuration = currentMs - previousMs;
+            const durationMs = checkin.hasLunchDiscount 
+              ? Math.max(0, rawDuration - 60 * 60 * 1000)
+              : rawDuration;
+
             checkinsOnDate.push({
+              id: checkin.id,
+              taskId: task.id,
               taskTitle: task.title,
               note: checkin.note,
               timestamp: new Date(checkin.timestamp),
-              durationMs: currentMs - previousMs
+              durationMs,
+              hasLunchDiscount: !!checkin.hasLunchDiscount
             });
           }
         });
@@ -167,15 +186,59 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
                   const m = Math.floor((checkin.durationMs % (1000 * 60 * 60)) / (1000 * 60));
                   const s = Math.floor((checkin.durationMs % (1000 * 60)) / 1000);
 
+                  const isAnotherInTaskDiscounted = checkinsOnDate.some(
+                    c => c.taskId === checkin.taskId && c.hasLunchDiscount && c.id !== checkin.id
+                  );
+
                   return (
-                    <li key={index} className="text-sm bg-orange-50/50 border border-orange-100 p-3 rounded-lg flex flex-col gap-1">
+                    <li key={checkin.id || index} className="text-sm bg-orange-50/50 border border-orange-100 p-3 rounded-lg flex flex-col gap-1.5">
                       <div className="flex justify-between items-start">
-                        <span className="font-bold text-orange-800">{checkin.taskTitle}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-emerald-600 font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded leading-none text-xs border border-emerald-100/50">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-orange-800">{checkin.taskTitle}</span>
+                          {checkin.hasLunchDiscount && (
+                            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                              <span>🥪</span> Almoço (-1h)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {/* Botão de Almoço */}
+                          {checkin.hasLunchDiscount ? (
+                            <button
+                              onClick={() => startTransition(async () => { await toggleCheckInLunchDiscount(checkin.id); })}
+                              disabled={isPending}
+                              className="text-[11px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer"
+                              title="Almoço aplicado (-1h). Clique para remover."
+                            >
+                              <span>🥪</span> -1h
+                            </button>
+                          ) : isAnotherInTaskDiscounted ? (
+                            <button
+                              disabled
+                              className="text-[11px] font-bold bg-gray-100 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded cursor-not-allowed opacity-40 flex items-center gap-1"
+                              title="O almoço já foi descontado em outro check-in desta tarefa"
+                            >
+                              <span>🥪</span> -1h
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => startTransition(async () => { await toggleCheckInLunchDiscount(checkin.id); })}
+                              disabled={isPending}
+                              className="text-[11px] font-bold bg-white hover:bg-amber-50 text-gray-500 hover:text-amber-700 border border-orange-200 hover:border-amber-300 px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer shadow-xs"
+                              title="Descontar 1h de almoço deste check-in"
+                            >
+                              <span>🥪</span> -1h
+                            </button>
+                          )}
+
+                          <span className={`font-mono font-bold px-1.5 py-0.5 rounded leading-none text-xs border ${
+                            checkin.hasLunchDiscount 
+                              ? 'bg-amber-50 text-amber-800 border-amber-200' 
+                              : 'bg-emerald-50 text-emerald-600 border-emerald-100/50'
+                          }`}>
                             {pad(h)}:{pad(m)}:{pad(s)}
                           </span>
-                          <span className="text-xs text-orange-400 font-medium">
+                          <span className="text-xs text-orange-400 font-medium ml-0.5">
                             {checkin.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>

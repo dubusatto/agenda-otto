@@ -364,6 +364,56 @@ export async function deleteCheckIn(checkInId: string) {
   revalidatePath("/");
 }
 
+export async function toggleCheckInLunchDiscount(checkInId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const checkIn = await prisma.checkIn.findUnique({
+    where: { id: checkInId },
+    include: {
+      timeEntry: {
+        include: {
+          taskInstance: {
+            include: { scheduledTask: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (!checkIn || checkIn.timeEntry.taskInstance.scheduledTask.userEmail !== session.user.email) {
+    throw new Error("Unauthorized");
+  }
+
+  const nextValue = !checkIn.hasLunchDiscount;
+
+  if (nextValue) {
+    const taskInstanceId = checkIn.timeEntry.taskInstanceId;
+    const timeEntries = await prisma.timeEntry.findMany({
+      where: { taskInstanceId },
+      select: { id: true }
+    });
+    const timeEntryIds = timeEntries.map((te) => te.id);
+
+    await prisma.checkIn.updateMany({
+      where: {
+        timeEntryId: { in: timeEntryIds },
+        hasLunchDiscount: true
+      },
+      data: {
+        hasLunchDiscount: false
+      }
+    });
+  }
+
+  await prisma.checkIn.update({
+    where: { id: checkInId },
+    data: { hasLunchDiscount: nextValue }
+  });
+
+  revalidatePath("/");
+}
+
 export async function createGoogleTaskList(title: string) {
   const session = await getServerSession(authOptions);
   if (!session || !session.accessToken) throw new Error("Unauthorized");
