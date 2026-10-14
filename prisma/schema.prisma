@@ -60,3 +60,19 @@ model CheckIn {
   hasLunchDiscount Boolean  @default(false)
   timestamp        DateTime @default(now())
 }
+
+model Alarm {
+  id            String    @id @default(cuid())
+  title         String
+  message       String?
+  time          String    // Formato "HH:mm", ex: "17:30"
+  color         String    @default("#ef4444")
+  daysOfWeek    Int[]     // ex: [1, 2, 3, 4, 5] para Seg-Sex, vazio se data única
+  date          DateTime? // para alarme de dia específico
+  enabled       Boolean   @default(true)
+  lastTriggered DateTime? // última vez que tocou
+  snoozeUntil   DateTime? // se adiado, toca neste momento
+  userEmail     String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}

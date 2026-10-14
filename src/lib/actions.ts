@@ -547,3 +547,111 @@ export async function extractScheduledTaskInstance(id: string, newStart: Date, n
 
   revalidatePath("/");
 }
+
+export async function getAlarms() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) return [];
+
+  return prisma.alarm.findMany({
+    where: { userEmail: session.user.email },
+    orderBy: { time: "asc" }
+  });
+}
+
+export async function createAlarm(data: {
+  title: string;
+  message?: string;
+  time: string;
+  color: string;
+  daysOfWeek: number[];
+  date?: Date;
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const alarm = await prisma.alarm.create({
+    data: {
+      title: data.title,
+      message: data.message,
+      time: data.time,
+      color: data.color || "#ef4444",
+      daysOfWeek: data.daysOfWeek || [],
+      date: data.date,
+      userEmail: session.user.email,
+      enabled: true,
+    }
+  });
+
+  revalidatePath("/");
+  return alarm;
+}
+
+export async function updateAlarm(id: string, data: Partial<{
+  title: string;
+  message: string;
+  time: string;
+  color: string;
+  daysOfWeek: number[];
+  date: Date | null;
+  enabled: boolean;
+}>) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const alarm = await prisma.alarm.findUnique({ where: { id } });
+  if (!alarm || alarm.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  const updated = await prisma.alarm.update({
+    where: { id },
+    data
+  });
+
+  revalidatePath("/");
+  return updated;
+}
+
+export async function deleteAlarm(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const alarm = await prisma.alarm.findUnique({ where: { id } });
+  if (!alarm || alarm.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  await prisma.alarm.delete({ where: { id } });
+  revalidatePath("/");
+}
+
+export async function toggleAlarm(id: string, enabled: boolean) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const alarm = await prisma.alarm.findUnique({ where: { id } });
+  if (!alarm || alarm.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  await prisma.alarm.update({
+    where: { id },
+    data: { enabled }
+  });
+
+  revalidatePath("/");
+}
+
+export async function triggerTestAlarm(testData: { title: string; message?: string; color: string }) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const daemonToken = process.env.ALARM_DAEMON_TOKEN || "otto_daemon_secret_2026";
+
+  await fetch(`${baseUrl}/api/alarms`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${daemonToken}`
+    },
+    body: JSON.stringify({
+      action: "trigger_test",
+      testAlarm: testData
+    })
+  });
+}

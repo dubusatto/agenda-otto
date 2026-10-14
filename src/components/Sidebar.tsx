@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { updateGoogleTask, createGoogleTask, createGoogleTaskList, deleteGoogleTaskList, clearOldCompletedTasks } from "@/lib/actions";
 import { getSemanticColor } from "@/lib/colors";
 import DailySummaryModal from "./DailySummaryModal";
+import AlarmManagerModal from "./AlarmManagerModal";
 
 function DraggableTask({ task, scheduledTask, readOnly = false }: { task: GoogleTask, scheduledTask: any, readOnly?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -160,6 +161,7 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
   });
 
   const [isDailySummaryOpen, setIsDailySummaryOpen] = useState(false);
+  const [isAlarmModalOpen, setIsAlarmModalOpen] = useState(false);
 
   return (
     <>
@@ -176,12 +178,21 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
         </div>
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm text-gray-500 font-medium">Organize e arraste</p>
-          <button 
-            onClick={() => setIsDailySummaryOpen(true)}
-            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 rounded transition flex items-center gap-1"
-          >
-            <span>📊</span> Diário
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={() => setIsAlarmModalOpen(true)}
+              className="text-xs bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-2 py-1 rounded transition flex items-center gap-1 shadow-2xs"
+              title="Configurar Alarmes de Impacto"
+            >
+              <span>⏰</span> Alarmes
+            </button>
+            <button 
+              onClick={() => setIsDailySummaryOpen(true)}
+              className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 rounded transition flex items-center gap-1"
+            >
+              <span>📊</span> Diário
+            </button>
+          </div>
         </div>
         
         {isCreatingList && (
@@ -356,6 +367,10 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
         onClose={() => setIsDailySummaryOpen(false)} 
         tasks={tasks} 
         localTasks={localTasks} 
+      />
+      <AlarmManagerModal
+        isOpen={isAlarmModalOpen}
+        onClose={() => setIsAlarmModalOpen(false)}
       />
     </>
   );
