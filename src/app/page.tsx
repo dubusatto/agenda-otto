@@ -4,9 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { getCalendarEvents, getGoogleTasks, getGoogleTaskLists } from "@/lib/google";
 import { getScheduledTasks, createScheduledTask } from "@/lib/actions";
 import DashboardClient from "@/components/DashboardClient";
-import { addHours, subMonths, addMonths } from "date-fns";
-import { getSemanticColor } from "@/lib/colors";
-import { RRule } from "rrule";
+import { subMonths, addMonths } from "date-fns";
+import { expandScheduledTaskOccurrences } from "@/lib/recurrence";
 
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
@@ -41,60 +40,9 @@ export default async function Dashboard() {
 
   // Map local DB tasks to the unified CalendarEvent interface
   // using semantic colors based on their original google task ID so they are consistent
-  const mappedScheduledTasks = scheduledTasksData.flatMap(st => {
-    // For non-recurring tasks, just use the first/latest instance regardless of instanceDate
-    const nonRecurringInstance = st.instances?.length > 0 
-      ? [...st.instances].sort((a, b) => b.instanceDate.getTime() - a.instanceDate.getTime())[0]
-      : undefined;
-    const isCompleted = nonRecurringInstance ? nonRecurringInstance.completed : st.completed;
-    
-    const baseEvent = {
-      id: st.id,
-      title: isCompleted ? `✓ ${st.title} (Concluída)` : `✓ ${st.title}`,
-      start: st.start,
-      end: st.end,
-      allDay: false,
-      calendarId: 'local-db',
-      backgroundColor: st.color || getSemanticColor(st.googleTaskId),
-      completed: isCompleted,
-      rrule: st.rrule || undefined,
-      timeEntries: nonRecurringInstance?.timeEntries || [],
-    };
-
-    if (st.rrule) {
-      try {
-        const options = RRule.parseString(st.rrule);
-        options.dtstart = st.start;
-        const duration = st.end.getTime() - st.start.getTime();
-        
-        const rruleObj = new RRule(options);
-        const occurrences = rruleObj.between(new Date(timeMin), new Date(timeMax), true);
-        
-        const exdatesTimes = new Set((st.exdates || []).map((d: Date) => d.getTime()));
-        const validOccurrences = occurrences.filter(d => !exdatesTimes.has(d.getTime()));
-        
-        return validOccurrences.map((date) => {
-          const instance = st.instances?.find((inst: any) => inst.instanceDate.getTime() === date.getTime());
-          const instCompleted = instance?.completed || false;
-          
-          return {
-            ...baseEvent,
-            id: `${st.id}-${date.getTime()}`,
-            title: instCompleted ? `✓ ${st.title} (Concluída)` : `✓ ${st.title}`,
-            start: date,
-            end: new Date(date.getTime() + duration),
-            completed: instCompleted,
-            timeEntries: instance?.timeEntries || []
-          };
-        });
-      } catch (e) {
-        console.error("Error parsing rrule", e);
-        return [baseEvent];
-      }
-    }
-
-    return [baseEvent];
-  });
+  const mappedScheduledTasks = scheduledTasksData.flatMap(st =>
+    expandScheduledTaskOccurrences(st, timeMin, timeMax)
+  );
 
   const allEvents = [...googleEvents, ...mappedScheduledTasks];
 

@@ -12,6 +12,12 @@ import {
   deleteCheckIn,
   toggleCheckInLunchDiscount
 } from "@/lib/actions";
+import {
+  calculateCheckInIntervals,
+  calculateTaskAccumulatedTime,
+  canApplyLunchDiscount,
+  hasTaskLunchDiscount,
+} from "@/lib/timetracking";
 
 const DAYS_MAP = [
   { id: 'MO', label: 'S' },
@@ -194,8 +200,7 @@ export default function TaskModal({
     return originalRrule !== newRrule;
   };
 
-  const allCheckinsInTask = (event.timeEntries || []).flatMap((te: any) => te.checkins || []);
-  const hasLunchDiscountApplied = allCheckinsInTask.some((c: any) => c.hasLunchDiscount);
+  const hasLunchDiscountApplied = hasTaskLunchDiscount(event.timeEntries || []);
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4" onPointerDown={onClose}>
@@ -284,25 +289,11 @@ export default function TaskModal({
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Time Tracking (WIP)</label>
                 
                 {(() => {
-                  const activeEntry = event.timeEntries?.find((te: any) => !te.endTime);
-                  const totalPastTimeMs = event.timeEntries?.filter((te: any) => te.endTime).reduce((acc: number, te: any) => {
-                    return acc + (new Date(te.endTime).getTime() - new Date(te.startTime).getTime());
-                  }, 0) || 0;
-                  
-                  const formatTime = (ms: number) => {
-                    if (ms === 0) return '0h 0m';
-                    const h = Math.floor(ms / (1000 * 60 * 60));
-                    const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-                    return `${h}h ${m}m`;
-                  };
+                  const { pastTimeMs: totalPastTimeMs, activeEntry, lunchDiscountMs } =
+                    calculateTaskAccumulatedTime(event.timeEntries || []);
 
                   const renderEntryHistory = (entry: any, index: number) => {
-                    const startMs = new Date(entry.startTime).getTime();
-                    
-                    // Ordena os check-ins do mais antigo para o mais novo (cronológico)
-                    const sortedCheckins = [...(entry.checkins || [])].sort((a, b) => 
-                      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-                    );
+                    const computedCheckins = calculateCheckInIntervals(entry);
                     
                     return (
                       <div key={entry.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
@@ -317,25 +308,16 @@ export default function TaskModal({
                           </span>
                         </div>
                         
-                        {sortedCheckins.length > 0 && (
+                        {computedCheckins.length > 0 && (
                           <div className="space-y-1.5 mt-2 border-l-2 border-gray-200 pl-2">
-                            {sortedCheckins.map((c: any, cIndex: number) => {
-                              const current = new Date(c.timestamp).getTime();
-                              const previousTime = cIndex === 0 
-                                ? startMs 
-                                : new Date(sortedCheckins[cIndex - 1].timestamp).getTime();
-                              
-                              const rawInterval = current - previousTime;
-                              const intervalDuration = c.hasLunchDiscount 
-                                ? Math.max(0, rawInterval - 60 * 60 * 1000)
-                                : rawInterval;
-                              
+                            {computedCheckins.map((c) => {
+                              const intervalDuration = c.durationMs;
                               const pad = (n: number) => n.toString().padStart(2, '0');
                               const h = Math.floor(intervalDuration / (1000 * 60 * 60));
                               const m = Math.floor((intervalDuration % (1000 * 60 * 60)) / (1000 * 60));
                               const s = Math.floor((intervalDuration % (1000 * 60)) / 1000);
                               
-                              const isAnotherCheckInDiscounted = hasLunchDiscountApplied && !c.hasLunchDiscount;
+                              const isAnotherCheckInDiscounted = !canApplyLunchDiscount(event.timeEntries || [], c.id);
 
                               return (
                                 <div key={c.id} className="text-xs bg-white border border-gray-100 p-3 rounded-lg flex justify-between items-center shadow-sm group">
@@ -409,8 +391,8 @@ export default function TaskModal({
                         <span className="text-sm font-bold text-gray-900">
                           <LiveTotalTimer 
                             pastTimeMs={totalPastTimeMs} 
-                            activeStartTime={activeEntry?.startTime} 
-                            lunchDiscountMs={hasLunchDiscountApplied ? 60 * 60 * 1000 : 0} 
+                            activeStartTime={activeEntry?.startTime ? String(activeEntry.startTime) : undefined} 
+                            lunchDiscountMs={lunchDiscountMs} 
                           />
                         </span>
                       </div>
@@ -440,10 +422,11 @@ export default function TaskModal({
                               </span>
                               Trabalhando agora...
                               {(() => {
-                                const lastCheckpointTime = activeEntry.checkins?.length > 0 
-                                  ? [...activeEntry.checkins].sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0].timestamp
+                                const checkins = activeEntry.checkins || [];
+                                const lastCheckpointTime = checkins.length > 0 
+                                  ? [...checkins].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0].timestamp
                                   : activeEntry.startTime;
-                                return <LiveTimer startTime={lastCheckpointTime} />;
+                                return <LiveTimer startTime={String(lastCheckpointTime)} />;
                               })()}
                             </span>
                             <button

@@ -5,6 +5,7 @@ import { isSameDay, isToday, addDays, subDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useState, useTransition } from "react";
 import { toggleCheckInLunchDiscount } from "@/lib/actions";
+import { calculateCheckInIntervals } from "@/lib/timetracking";
 
 interface DailySummaryModalProps {
   isOpen: boolean;
@@ -54,31 +55,18 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
   localTasks.forEach(task => {
     task.instances?.forEach((instance: any) => {
       instance.timeEntries?.forEach((entry: any) => {
-        // Ordena cronologicamente para calcular o tempo percorrido
-        const sortedCheckins = [...(entry.checkins || [])].sort(
-          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
+        const computedCheckins = calculateCheckInIntervals(entry);
         
-        sortedCheckins.forEach((checkin: any, index: number) => {
+        computedCheckins.forEach((checkin) => {
           if (isSameDay(new Date(checkin.timestamp), selectedDate)) {
-            const currentMs = new Date(checkin.timestamp).getTime();
-            const previousMs = index === 0 
-              ? new Date(entry.startTime).getTime() 
-              : new Date(sortedCheckins[index - 1].timestamp).getTime();
-              
-            const rawDuration = currentMs - previousMs;
-            const durationMs = checkin.hasLunchDiscount 
-              ? Math.max(0, rawDuration - 60 * 60 * 1000)
-              : rawDuration;
-
             checkinsOnDate.push({
               id: checkin.id,
               taskId: task.id,
               taskTitle: task.title,
               note: checkin.note,
               timestamp: new Date(checkin.timestamp),
-              durationMs,
-              hasLunchDiscount: !!checkin.hasLunchDiscount
+              durationMs: checkin.durationMs,
+              hasLunchDiscount: checkin.hasLunchDiscount
             });
           }
         });
