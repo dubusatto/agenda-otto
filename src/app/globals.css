@@ -64,8 +64,8 @@ body {
   color: #9ca3af !important; /* gray-400 */
 }
 
-/* Mobile Responsive Overrides for React Big Calendar */
-@media (max-width: 767px) {
+/* Mobile & Landscape Phone Responsive Overrides (< 1024px) */
+@media (max-width: 1023px) {
   .rbc-toolbar {
     flex-wrap: wrap !important;
     gap: 6px !important;
@@ -93,5 +93,56 @@ body {
   .rbc-time-gutter .rbc-timeslot-group {
     font-size: 10px !important;
     padding: 0 2px !important;
+  }
+}
+
+/* Landscape Mobile & Short Viewport Optimizations (e.g., iPhone rotated horizontally) */
+@media (max-height: 550px) {
+  .app-header {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  .app-main-container {
+    padding: 4px 8px 42px 8px !important;
+  }
+
+  .app-calendar-card {
+    padding: 4px 8px !important;
+  }
+
+  .mobile-bottom-dock {
+    padding: 4px 10px !important;
+  }
+
+  .mobile-dock-btn {
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+  }
+
+  .rbc-toolbar {
+    flex-wrap: nowrap !important;
+    margin-bottom: 4px !important;
+    gap: 4px !important;
+  }
+
+  .rbc-toolbar button {
+    padding: 2px 7px !important;
+    font-size: 11px !important;
+  }
+
+  .rbc-header {
+    padding: 2px 0 !important;
+    font-size: 11px !important;
+  }
+
+  /* Prevent Month view from crushing rows on short screens by allowing vertical scroll */
+  .rbc-month-view {
+    overflow-y: auto !important;
+  }
+
+  .rbc-month-row {
+    min-height: 46px !important;
+    overflow: visible !important;
   }
 }

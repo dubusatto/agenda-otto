@@ -133,7 +133,7 @@ function DraggableTask({ task, scheduledTask, readOnly = false, onScheduled }: {
               <button
                 type="button"
                 onClick={() => setIsScheduling(!isScheduling)}
-                className="md:opacity-0 md:group-hover:opacity-100 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition ml-auto"
+                className="lg:opacity-0 lg:group-hover:opacity-100 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition ml-auto"
                 title="Agendar horário para hoje"
               >
                 📅 Agendar
@@ -232,7 +232,7 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
     {/* Mobile Backdrop when Bottom Sheet is open */}
     {isMobileDrawerOpen && (
       <div 
-        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-30 md:hidden"
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-30 lg:hidden"
         onClick={() => setIsMobileDrawerOpen(false)}
       />
     )}
@@ -240,10 +240,10 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
     <aside className={`${
       isMobileDrawerOpen 
         ? 'fixed inset-x-0 bottom-0 z-40 max-h-[82dvh] rounded-t-2xl shadow-2xl flex' 
-        : 'hidden md:flex'
-    } md:static md:w-80 bg-gray-50 border-l border-gray-200 flex-col md:h-full md:max-h-none md:rounded-none md:shadow-none md:z-20`}>
+        : 'hidden lg:flex'
+    } lg:static lg:w-80 bg-gray-50 border-l border-gray-200 flex-col lg:h-full lg:max-h-none lg:rounded-none lg:shadow-none lg:z-20`}>
       {/* Mobile Handle Bar */}
-      <div className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl md:hidden" onClick={() => setIsMobileDrawerOpen(false)}>
+      <div className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl lg:hidden" onClick={() => setIsMobileDrawerOpen(false)}>
         <div className="w-10 h-1.5 bg-gray-300 rounded-full" />
       </div>
 
@@ -259,7 +259,7 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
             </button>
             <button
               onClick={() => setIsMobileDrawerOpen(false)}
-              className="md:hidden text-gray-400 hover:text-gray-600 p-1 text-sm font-bold"
+              className="lg:hidden text-gray-400 hover:text-gray-600 p-1 text-sm font-bold"
               title="Fechar"
             >
               ✕
@@ -462,10 +462,10 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
     </aside>
 
       {/* Mobile Bottom Dock */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 px-3 py-2 flex items-center justify-around gap-2 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+      <div className="mobile-bottom-dock lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 px-3 py-2 flex items-center justify-around gap-2 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
         <button
           onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
-          className="flex-1 bg-blue-600 active:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+          className="mobile-dock-btn flex-1 bg-blue-600 active:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
         >
           <span>📋</span> Suas Listas
           {pendingTasksCount > 0 && (
@@ -479,13 +479,13 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
             setIsDailySummaryOpen(true);
             router.refresh();
           }}
-          className="bg-gray-100 active:bg-gray-200 text-gray-800 font-bold text-xs py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1"
+          className="mobile-dock-btn bg-gray-100 active:bg-gray-200 text-gray-800 font-bold text-xs py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1"
         >
           <span>📊</span> Diário
         </button>
         <button
           onClick={() => setIsAlarmModalOpen(true)}
-          className="bg-red-50 active:bg-red-100 text-red-700 border border-red-200 font-bold text-xs py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1"
+          className="mobile-dock-btn bg-red-50 active:bg-red-100 text-red-700 border border-red-200 font-bold text-xs py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1"
         >
           <span>⏰</span> Alarmes
         </button>

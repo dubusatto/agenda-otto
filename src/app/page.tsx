@@ -100,15 +100,15 @@ export default async function Dashboard() {
 
   return (
     <div className="h-[100dvh] bg-gray-100 flex flex-col font-sans overflow-hidden">
-      <header className="bg-white border-b px-3 py-2.5 md:px-6 md:py-4 flex items-center justify-between shadow-sm z-20 relative shrink-0">
+      <header className="app-header bg-white border-b px-3 py-2 lg:px-6 lg:py-4 flex items-center justify-between shadow-sm z-20 relative shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 md:w-8 md:h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg md:text-xl">
+          <div className="w-7 h-7 lg:w-8 lg:h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-base lg:text-xl">
             O
           </div>
-          <h1 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight">Agenda Otto</h1>
+          <h1 className="text-base lg:text-xl font-bold text-gray-900 tracking-tight">Agenda Otto</h1>
         </div>
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="text-xs md:text-sm text-gray-600 font-medium bg-gray-50 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-gray-200 truncate max-w-[160px] md:max-w-none">
+        <div className="flex items-center gap-2 lg:gap-4">
+          <div className="text-xs lg:text-sm text-gray-600 font-medium bg-gray-50 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border border-gray-200 truncate max-w-[160px] lg:max-w-none">
             {session.user?.name}
           </div>
         </div>

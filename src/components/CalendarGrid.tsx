@@ -75,9 +75,9 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [newTaskSlot, setNewTaskSlot] = useState<{start: Date, end: Date} | null>(null);
 
-  // Switch to Day view automatically on mobile screens so columns aren't squished
+  // Switch to Day view automatically on mobile screens (portrait or landscape) so columns aren't squished
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setView('day');
     }
   }, []);
