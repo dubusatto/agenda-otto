@@ -4,12 +4,12 @@ import { GoogleTask, TaskList } from "@/lib/google";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition } from "react";
-import { updateGoogleTask, createGoogleTask, createGoogleTaskList, deleteGoogleTaskList, clearOldCompletedTasks } from "@/lib/actions";
+import { updateGoogleTask, createGoogleTask, createGoogleTaskList, deleteGoogleTaskList, clearOldCompletedTasks, createScheduledTask } from "@/lib/actions";
 import { getSemanticColor } from "@/lib/colors";
 import DailySummaryModal from "./DailySummaryModal";
 import AlarmManagerModal from "./AlarmManagerModal";
 
-function DraggableTask({ task, scheduledTask, readOnly = false }: { task: GoogleTask, scheduledTask: any, readOnly?: boolean }) {
+function DraggableTask({ task, scheduledTask, readOnly = false, onScheduled }: { task: GoogleTask, scheduledTask: any, readOnly?: boolean, onScheduled?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
     data: task,
@@ -19,6 +19,13 @@ function DraggableTask({ task, scheduledTask, readOnly = false }: { task: Google
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [scheduleTime, setScheduleTime] = useState(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() < 30 ? 30 : 0);
+    if (now.getMinutes() === 0) now.setHours(now.getHours() + 1);
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
 
   const taskColor = getSemanticColor(task.id);
   const isCompleted = task.status === 'completed';
@@ -120,7 +127,60 @@ function DraggableTask({ task, scheduledTask, readOnly = false }: { task: Google
                 )}
               </div>
             )}
+
+            {/* Touch-friendly schedule button (especially helpful on mobile) */}
+            {!readOnly && !isCompleted && (
+              <button
+                type="button"
+                onClick={() => setIsScheduling(!isScheduling)}
+                className="md:opacity-0 md:group-hover:opacity-100 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition ml-auto"
+                title="Agendar horário para hoje"
+              >
+                📅 Agendar
+              </button>
+            )}
           </div>
+
+          {isScheduling && !readOnly && (
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-2 animate-in fade-in">
+              <input
+                type="time"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+                className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-800 font-bold bg-gray-50"
+              />
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  const [h, m] = scheduleTime.split(':').map(Number);
+                  const start = new Date();
+                  start.setHours(h, m, 0, 0);
+                  const end = new Date(start.getTime() + 30 * 60000);
+                  startTransition(async () => {
+                    await createScheduledTask({
+                      googleTaskId: task.id,
+                      title: task.title,
+                      start,
+                      end
+                    });
+                    setIsScheduling(false);
+                    onScheduled?.();
+                  });
+                }}
+                className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded transition"
+              >
+                Confirmar
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsScheduling(false)}
+                className="text-xs text-gray-400 hover:text-gray-600 px-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -133,6 +193,7 @@ import { useRouter } from 'next/navigation';
 export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: GoogleTask[], taskLists: TaskList[], localTasks?: any[] }) {
   const router = useRouter();
   const [expandedLists, setExpandedLists] = useState<Record<string, boolean>>({});
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   
   // Create list state
   const [isCreatingList, setIsCreatingList] = useState(false);
@@ -164,25 +225,55 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
 
   const [isDailySummaryOpen, setIsDailySummaryOpen] = useState(false);
   const [isAlarmModalOpen, setIsAlarmModalOpen] = useState(false);
+  const pendingTasksCount = activeTasks.filter(t => t.status !== 'completed').length;
 
   return (
     <>
-    <aside className="w-80 bg-gray-50 border-l border-gray-200 flex flex-col h-full z-20">
+    {/* Mobile Backdrop when Bottom Sheet is open */}
+    {isMobileDrawerOpen && (
+      <div 
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-30 md:hidden"
+        onClick={() => setIsMobileDrawerOpen(false)}
+      />
+    )}
+
+    <aside className={`${
+      isMobileDrawerOpen 
+        ? 'fixed inset-x-0 bottom-0 z-40 max-h-[82dvh] rounded-t-2xl shadow-2xl flex' 
+        : 'hidden md:flex'
+    } md:static md:w-80 bg-gray-50 border-l border-gray-200 flex-col md:h-full md:max-h-none md:rounded-none md:shadow-none md:z-20`}>
+      {/* Mobile Handle Bar */}
+      <div className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl md:hidden" onClick={() => setIsMobileDrawerOpen(false)}>
+        <div className="w-10 h-1.5 bg-gray-300 rounded-full" />
+      </div>
+
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex justify-between items-center mb-1">
           <h2 className="text-lg font-bold text-gray-900">Suas Listas</h2>
-          <button 
-            onClick={() => setIsCreatingList(!isCreatingList)}
-            className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-sm font-bold transition"
-          >
-            + Lista
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsCreatingList(!isCreatingList)}
+              className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-sm font-bold transition"
+            >
+              + Lista
+            </button>
+            <button
+              onClick={() => setIsMobileDrawerOpen(false)}
+              className="md:hidden text-gray-400 hover:text-gray-600 p-1 text-sm font-bold"
+              title="Fechar"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm text-gray-500 font-medium">Organize e arraste</p>
+          <p className="text-sm text-gray-500 font-medium">Organize e agende</p>
           <div className="flex items-center gap-1.5">
             <button 
-              onClick={() => setIsAlarmModalOpen(true)}
+              onClick={() => {
+                setIsMobileDrawerOpen(false);
+                setIsAlarmModalOpen(true);
+              }}
               className="text-xs bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-2 py-1 rounded transition flex items-center gap-1 shadow-2xs"
               title="Configurar Alarmes de Impacto"
             >
@@ -190,6 +281,7 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
             </button>
             <button 
               onClick={() => {
+                setIsMobileDrawerOpen(false);
                 setIsDailySummaryOpen(true);
                 router.refresh();
               }}
@@ -281,6 +373,7 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
                             key={task.id} 
                             task={task} 
                             scheduledTask={scheduledTask}
+                            onScheduled={() => setIsMobileDrawerOpen(false)}
                           />
                         );
                       })
@@ -367,6 +460,37 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
         )}
       </div>
     </aside>
+
+      {/* Mobile Bottom Dock */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 px-3 py-2 flex items-center justify-around gap-2 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+        <button
+          onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
+          className="flex-1 bg-blue-600 active:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+        >
+          <span>📋</span> Suas Listas
+          {pendingTasksCount > 0 && (
+            <span className="bg-white/25 text-white text-[11px] px-1.5 py-0.2 rounded-full">
+              {pendingTasksCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => {
+            setIsDailySummaryOpen(true);
+            router.refresh();
+          }}
+          className="bg-gray-100 active:bg-gray-200 text-gray-800 font-bold text-xs py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1"
+        >
+          <span>📊</span> Diário
+        </button>
+        <button
+          onClick={() => setIsAlarmModalOpen(true)}
+          className="bg-red-50 active:bg-red-100 text-red-700 border border-red-200 font-bold text-xs py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1"
+        >
+          <span>⏰</span> Alarmes
+        </button>
+      </div>
+
       <DailySummaryModal 
         isOpen={isDailySummaryOpen} 
         onClose={() => setIsDailySummaryOpen(false)} 

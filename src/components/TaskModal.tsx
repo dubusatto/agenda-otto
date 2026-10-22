@@ -198,19 +198,22 @@ export default function TaskModal({
   const hasLunchDiscountApplied = allCheckinsInTask.some((c: any) => c.hasLunchDiscount);
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onPointerDown={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="h-4 w-full" style={{ backgroundColor: event.backgroundColor }}></div>
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h2 className="text-2xl font-bold text-gray-800">{event.title}</h2>
-            {hasLunchDiscountApplied && (
-              <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-2.5 py-1 rounded-full shadow-xs">
-                <span>🥪</span> Almoço Descontado (-1h)
-              </span>
-            )}
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4" onPointerDown={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden relative" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="h-3 md:h-4 w-full shrink-0" style={{ backgroundColor: event.backgroundColor }}></div>
+        <div className="p-4 md:p-6 overflow-y-auto flex-1">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800">{event.title}</h2>
+              {hasLunchDiscountApplied && (
+                <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-2.5 py-1 rounded-full shadow-xs">
+                  <span>🥪</span> Almoço Descontado (-1h)
+                </span>
+              )}
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-full shrink-0">✕</button>
           </div>
-          <p className="text-sm text-gray-500 mb-6 font-medium">
+          <p className="text-xs md:text-sm text-gray-500 mb-4 md:mb-6 font-medium">
             {event.start.toLocaleDateString()} das {event.start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} às {event.end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
           </p>
 
@@ -383,7 +386,7 @@ export default function TaskModal({
                                       <button 
                                         onClick={() => startTransition(async () => { await deleteCheckIn(c.id); })}
                                         disabled={isPending}
-                                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center ml-1"
+                                        className="text-gray-300 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center ml-1"
                                         title="Excluir Check-in"
                                       >
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>

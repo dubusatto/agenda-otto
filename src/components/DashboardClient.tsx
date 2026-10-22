@@ -117,8 +117,8 @@ export default function DashboardClient({
   return (
     <DndContext id={dndId} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <main className="flex-1 overflow-hidden flex relative z-10">
-        <div className="flex-1 p-6 overflow-hidden">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full h-full p-4">
+        <div className="flex-1 p-2 pb-16 md:p-6 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full h-full p-2 md:p-4">
             <CalendarGrid events={initialEvents} />
           </div>
         </div>

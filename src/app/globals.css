@@ -63,3 +63,35 @@ body {
 .rbc-off-range {
   color: #9ca3af !important; /* gray-400 */
 }
+
+/* Mobile Responsive Overrides for React Big Calendar */
+@media (max-width: 767px) {
+  .rbc-toolbar {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+    font-size: 12px !important;
+  }
+
+  .rbc-toolbar .rbc-toolbar-label {
+    font-size: 13px !important;
+    padding: 0 4px !important;
+    flex-grow: 1 !important;
+    text-align: center !important;
+  }
+
+  .rbc-toolbar button {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .rbc-header {
+    font-size: 11px !important;
+    padding: 4px 0 !important;
+  }
+
+  .rbc-time-gutter .rbc-timeslot-group {
+    font-size: 10px !important;
+    padding: 0 2px !important;
+  }
+}

@@ -75,6 +75,13 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [newTaskSlot, setNewTaskSlot] = useState<{start: Date, end: Date} | null>(null);
 
+  // Switch to Day view automatically on mobile screens so columns aren't squished
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setView('day');
+    }
+  }, []);
+
   // Sync selected event when server data updates
   React.useEffect(() => {
     if (selectedEvent) {
@@ -142,6 +149,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         date={date}
         onNavigate={setDate}
         views={['month', 'week', 'day']}
+        scrollToTime={new Date(1970, 1, 1, 8, 0, 0)}
         style={{ height: '100%' }}
         selectable
         onSelectSlot={(slotInfo) => {
