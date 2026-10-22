@@ -4,7 +4,8 @@ import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, defaultDropAnima
 import CalendarGrid from "./CalendarGrid";
 import Sidebar from "./Sidebar";
 import { GoogleTask, CalendarEvent, TaskList } from "@/lib/google";
-import { useState, useId } from "react";
+import { useState, useId, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createScheduledTask } from "@/lib/actions";
 
 export default function DashboardClient({ 
@@ -19,7 +20,56 @@ export default function DashboardClient({
   localTasks?: any[]
 }) {
   const dndId = useId();
+  const router = useRouter();
   const [activeTask, setActiveTask] = useState<GoogleTask | null>(null);
+  const lastRefreshRef = useRef<number>(0);
+
+  // Verifica se há alguma sessão de trabalho em andamento (cronômetro rodando)
+  const hasActiveSession = localTasks.some((task: any) =>
+    task.instances?.some((inst: any) =>
+      inst.timeEntries?.some((te: any) => !te.endTime)
+    )
+  );
+
+  useEffect(() => {
+    const triggerRefresh = () => {
+      const now = Date.now();
+      // Evita disparos duplicados em menos de 2 segundos (ex: visibilitychange + focus juntos)
+      if (now - lastRefreshRef.current > 2000) {
+        lastRefreshRef.current = now;
+        router.refresh();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        triggerRefresh();
+      }
+    };
+
+    const handleFocus = () => {
+      triggerRefresh();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Polling inteligente a cada 15s (apenas se a aba estiver visível e houver tarefa em andamento)
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (hasActiveSession) {
+      interval = setInterval(() => {
+        if (document.visibilityState === "visible") {
+          triggerRefresh();
+        }
+      }, 15000);
+    }
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (interval) clearInterval(interval);
+    };
+  }, [router, hasActiveSession]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;

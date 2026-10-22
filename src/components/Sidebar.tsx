@@ -128,8 +128,10 @@ function DraggableTask({ task, scheduledTask, readOnly = false }: { task: Google
 }
 
 import { startOfWeek } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: GoogleTask[], taskLists: TaskList[], localTasks?: any[] }) {
+  const router = useRouter();
   const [expandedLists, setExpandedLists] = useState<Record<string, boolean>>({});
   
   // Create list state
@@ -187,7 +189,10 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
               <span>⏰</span> Alarmes
             </button>
             <button 
-              onClick={() => setIsDailySummaryOpen(true)}
+              onClick={() => {
+                setIsDailySummaryOpen(true);
+                router.refresh();
+              }}
               className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 rounded transition flex items-center gap-1"
             >
               <span>📊</span> Diário

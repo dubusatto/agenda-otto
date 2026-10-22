@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-// Evita múltiplas instâncias do Prisma em ambiente serverless
-const prisma = new PrismaClient();
+import { revalidatePath } from 'next/cache';
+import { prisma } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -47,6 +45,7 @@ export async function POST(request: Request) {
       }
     });
     
+    revalidatePath('/');
     console.log("Check-in salvo com sucesso via Claude Code MCP!");
 
     // 5. Retorno de Sucesso
@@ -58,8 +57,5 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Erro ao registrar check-in:", error);
     return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
-  } finally {
-    // É boa prática desconectar o Prisma ao final
-    await prisma.$disconnect();
   }
 }

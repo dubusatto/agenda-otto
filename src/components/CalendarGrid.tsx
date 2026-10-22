@@ -8,6 +8,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEvent } from '@/lib/google';
 import React, { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { useDroppable } from '@dnd-kit/core';
 import { updateScheduledTaskTime } from '@/lib/actions';
@@ -67,6 +68,7 @@ function CustomEvent({ event }: any) {
 }
 
 export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
+  const router = useRouter();
   const [view, setView] = useState<View>('week');
   const [date, setDate] = useState<Date>(new Date());
   const [isPending, startTransition] = useTransition();
@@ -147,7 +149,10 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
             setNewTaskSlot({ start: slotInfo.start, end: slotInfo.end });
           }
         }}
-        onSelectEvent={(event) => setSelectedEvent(event as any)}
+        onSelectEvent={(event) => {
+          setSelectedEvent(event as any);
+          router.refresh();
+        }}
         onEventDrop={handleEventDrop}
         onEventResize={handleEventResize}
         resizable
