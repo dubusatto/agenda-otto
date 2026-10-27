@@ -37,9 +37,46 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
   if (!isOpen) return null;
 
   // Filtrar tarefas do Google concluídas no dia selecionado
-  const completedOnDate = tasks.filter(t => 
+  const googleCompletedOnDate = tasks.filter(t => 
     t.status === 'completed' && t.completedAt && isSameDay(new Date(t.completedAt), selectedDate)
-  ).sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+  ).map(t => ({
+    id: `google-${t.id}`,
+    title: t.title,
+    completedAt: new Date(t.completedAt!),
+    count: 0,
+    hasCounter: false,
+  }));
+
+  // Filtrar instâncias de tarefas da agenda concluídas (ou com contador > 0) no dia selecionado
+  const localCompletedOnDate: {
+    id: string;
+    title: string;
+    completedAt: Date;
+    count: number;
+    hasCounter: boolean;
+  }[] = [];
+
+  localTasks.forEach(task => {
+    task.instances?.forEach((instance: any) => {
+      const matchesDate =
+        isSameDay(new Date(instance.instanceDate), selectedDate) ||
+        (instance.completedAt && isSameDay(new Date(instance.completedAt), selectedDate));
+
+      if (matchesDate && (instance.completed || (task.hasCounter && (instance.count || 0) > 0))) {
+        localCompletedOnDate.push({
+          id: `local-${instance.id || `${task.id}-${instance.instanceDate}`}`,
+          title: task.title,
+          completedAt: instance.completedAt ? new Date(instance.completedAt) : new Date(instance.instanceDate),
+          count: instance.count || 0,
+          hasCounter: !!task.hasCounter,
+        });
+      }
+    });
+  });
+
+  const completedOnDate = [...localCompletedOnDate, ...googleCompletedOnDate].sort(
+    (a, b) => b.completedAt.getTime() - a.completedAt.getTime()
+  );
 
   // Filtrar check-ins do dia selecionado
   const checkinsOnDate: { 
@@ -144,14 +181,21 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
             ) : (
               <ul className="space-y-2">
                 {completedOnDate.map(task => (
-                  <li key={task.id} className="text-sm bg-gray-50 border border-gray-100 p-3 rounded-lg flex items-start gap-3">
-                    <span className="text-green-500 mt-0.5">✓</span>
-                    <div>
-                      <p className="font-medium text-gray-800 line-through decoration-gray-300">{task.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                  <li key={task.id} className="text-sm bg-gray-50 border border-gray-100 p-3 rounded-lg flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <span className="text-green-500 mt-0.5 font-bold">✓</span>
+                      <div>
+                        <p className="font-medium text-gray-800 line-through decoration-gray-300">{task.title}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {new Date(task.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
                     </div>
+                    {task.hasCounter && task.count > 0 && (
+                      <span className="bg-indigo-100 text-indigo-800 border border-indigo-200 font-mono font-bold text-xs px-2.5 py-1 rounded-full shrink-0">
+                        🔢 {task.count}x
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

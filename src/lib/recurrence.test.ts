@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { expandScheduledTaskOccurrences } from './recurrence';
+import { expandScheduledTaskOccurrences, computeNextCounterState } from './recurrence';
 
 describe('Seam 3: Recurrence Engine & Calendar Window (recurrence.ts)', () => {
   it('returns a single CalendarEvent for a non-recurring task with its latest instance state', () => {
@@ -116,5 +116,65 @@ describe('Seam 3: Recurrence Engine & Calendar Window (recurrence.ts)', () => {
     expect(events[1].completed).toBe(false);
     expect(events[1].title).toBe('✓ Refino Técnico');
     expect(events[1].timeEntries).toEqual([]);
+  });
+
+  it('includes repetition count in title, event count, and totalCount when hasCounter is enabled', () => {
+    const oct2 = new Date('2026-10-02T12:00:00.000Z');
+    const oct5 = new Date('2026-10-05T12:00:00.000Z');
+
+    const task = {
+      id: 'task-counter-cv',
+      googleTaskId: 'gtask-cv',
+      title: 'Enviar currículos',
+      start: new Date('2026-10-02T12:00:00.000Z'),
+      end: new Date('2026-10-02T12:30:00.000Z'),
+      color: '#f59e0b',
+      completed: false,
+      hasCounter: true,
+      rrule: 'FREQ=WEEKLY;BYDAY=MO,FR',
+      exdates: [],
+      instances: [
+        {
+          id: 'inst-oct2',
+          instanceDate: oct2,
+          completed: true,
+          count: 5,
+          timeEntries: [],
+        },
+        {
+          id: 'inst-prev',
+          instanceDate: new Date('2026-09-28T12:00:00.000Z'),
+          completed: true,
+          count: 12,
+          timeEntries: [],
+        },
+      ],
+    };
+
+    const events = expandScheduledTaskOccurrences(
+      task,
+      new Date('2026-10-01T00:00:00.000Z'),
+      new Date('2026-10-06T23:59:59.000Z')
+    );
+
+    expect(events).toHaveLength(2);
+    // Oct 2 has 5 repetitions -> shows (5x) and totalCount = 5 + 12 = 17
+    expect(events[0].hasCounter).toBe(true);
+    expect(events[0].count).toBe(5);
+    expect(events[0].totalCount).toBe(17);
+    expect(events[0].title).toBe('✓ Enviar currículos (5x) (Concluída)');
+
+    // Oct 5 has 0 repetitions -> does not show (0x), but still knows hasCounter=true and totalCount=17
+    expect(events[1].hasCounter).toBe(true);
+    expect(events[1].count).toBe(0);
+    expect(events[1].totalCount).toBe(17);
+    expect(events[1].title).toBe('✓ Enviar currículos');
+  });
+
+  it('auto-completes when counter goes from 0 to 1, auto-uncompletes when returning to 0, and never goes negative', () => {
+    expect(computeNextCounterState(0, 1)).toEqual({ count: 1, completed: true });
+    expect(computeNextCounterState(1, 1)).toEqual({ count: 2, completed: true });
+    expect(computeNextCounterState(1, -1)).toEqual({ count: 0, completed: false });
+    expect(computeNextCounterState(0, -1)).toEqual({ count: 0, completed: false });
   });
 });

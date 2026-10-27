@@ -10,7 +10,9 @@ import {
   stopTimeTracking,
   addCheckIn,
   deleteCheckIn,
-  toggleCheckInLunchDiscount
+  toggleCheckInLunchDiscount,
+  toggleScheduledTaskCounterMode,
+  adjustScheduledTaskCount
 } from "@/lib/actions";
 import {
   calculateCheckInIntervals,
@@ -283,6 +285,79 @@ export default function TaskModal({
                   </button>
                 </div>
               )}
+
+              {/* Repetition Counter Section (Opt-in) */}
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-700">🔢 Contador de Repetições</span>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() =>
+                      startTransition(async () => {
+                        await toggleScheduledTaskCounterMode(event.id, !event.hasCounter);
+                      })
+                    }
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      event.hasCounter ? 'bg-indigo-600' : 'bg-gray-200'
+                    }`}
+                    title={event.hasCounter ? 'Desativar contador' : 'Ativar contador de repetições'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                        event.hasCounter ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {event.hasCounter && (
+                  <div className="mt-3 bg-indigo-50/60 border border-indigo-100 rounded-xl p-3.5 flex items-center justify-between animate-in fade-in duration-150">
+                    <div>
+                      <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide">Feito neste dia</p>
+                      <p className="text-xs text-indigo-600 font-medium mt-0.5">
+                        Total acumulado: <span className="font-bold">{event.totalCount || 0}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={isPending || (event.count || 0) <= 0}
+                        onClick={() =>
+                          startTransition(async () => {
+                            await adjustScheduledTaskCount(event.id, -1);
+                          })
+                        }
+                        className="w-10 h-10 rounded-xl bg-white border border-indigo-200 text-indigo-700 font-bold text-lg flex items-center justify-center shadow-xs hover:bg-indigo-100 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        title="Diminuir 1 (corrige clique acidental)"
+                      >
+                        −
+                      </button>
+
+                      <span className="min-w-[36px] text-center font-mono text-2xl font-extrabold text-indigo-950">
+                        {event.count || 0}
+                      </span>
+
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() =>
+                          startTransition(async () => {
+                            await adjustScheduledTaskCount(event.id, 1);
+                          })
+                        }
+                        className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold text-lg flex items-center justify-center shadow-sm hover:bg-indigo-700 active:scale-95 disabled:opacity-50 transition"
+                        title="Adicionar +1 repetição"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Time Tracking Section */}
               <div className="pt-4 border-t border-gray-100">

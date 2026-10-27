@@ -17,6 +17,7 @@ model ScheduledTask {
   exdates      DateTime[]
   color        String?
   completed    Boolean  @default(false)
+  hasCounter   Boolean  @default(false)
   userEmail    String
   
   instances    TaskInstance[]
@@ -34,6 +35,7 @@ model TaskInstance {
   
   completed       Boolean  @default(false)
   completedAt     DateTime?
+  count           Int      @default(0)
   
   timeEntries     TimeEntry[]
   

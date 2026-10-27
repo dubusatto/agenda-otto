@@ -655,3 +655,112 @@ export async function triggerTestAlarm(testData: { title: string; message?: stri
     })
   });
 }
+
+export async function toggleScheduledTaskCounterMode(id: string, hasCounter: boolean) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const baseId = id.split('-')[0];
+  const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  const updated = await prisma.scheduledTask.update({
+    where: { id: baseId },
+    data: { hasCounter }
+  });
+
+  revalidatePath("/");
+  return updated;
+}
+
+export async function adjustScheduledTaskCount(id: string, delta: number) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const [baseId, dateString] = id.split('-');
+  const task = await prisma.scheduledTask.findUnique({
+    where: { id: baseId },
+    include: { instances: true }
+  });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  const { computeNextCounterState } = await import('@/lib/recurrence');
+
+  if (dateString) {
+    const instanceDate = new Date(parseInt(dateString));
+    const existing = await prisma.taskInstance.findUnique({
+      where: {
+        scheduledTaskId_instanceDate: {
+          scheduledTaskId: baseId,
+          instanceDate
+        }
+      }
+    });
+
+    const currentCount = existing?.count || 0;
+    const { count, completed } = computeNextCounterState(currentCount, delta);
+
+    await prisma.taskInstance.upsert({
+      where: {
+        scheduledTaskId_instanceDate: {
+          scheduledTaskId: baseId,
+          instanceDate
+        }
+      },
+      create: {
+        scheduledTaskId: baseId,
+        instanceDate,
+        count,
+        completed,
+        completedAt: completed ? new Date() : null
+      },
+      update: {
+        count,
+        completed,
+        completedAt: completed ? (existing?.completedAt || new Date()) : null
+      }
+    });
+  } else {
+    const latestInstance = task.instances.length > 0
+      ? [...task.instances].sort((a, b) => b.instanceDate.getTime() - a.instanceDate.getTime())[0]
+      : undefined;
+
+    const currentCount = latestInstance?.count || 0;
+    const { count, completed } = computeNextCounterState(currentCount, delta);
+
+    if (latestInstance) {
+      await prisma.$transaction([
+        prisma.taskInstance.update({
+          where: { id: latestInstance.id },
+          data: {
+            count,
+            completed,
+            completedAt: completed ? (latestInstance.completedAt || new Date()) : null
+          }
+        }),
+        prisma.scheduledTask.update({
+          where: { id: baseId },
+          data: { completed }
+        })
+      ]);
+    } else {
+      await prisma.$transaction([
+        prisma.taskInstance.create({
+          data: {
+            scheduledTaskId: baseId,
+            instanceDate: task.start,
+            count,
+            completed,
+            completedAt: completed ? new Date() : null
+          }
+        }),
+        prisma.scheduledTask.update({
+          where: { id: baseId },
+          data: { completed }
+        })
+      ]);
+    }
+  }
+
+  revalidatePath("/");
+}

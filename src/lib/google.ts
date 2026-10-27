@@ -9,6 +9,9 @@ export interface CalendarEvent {
   calendarId: string;
   backgroundColor?: string;
   completed?: boolean;
+  hasCounter?: boolean;
+  count?: number;
+  totalCount?: number;
   rrule?: string;
   timeEntries?: any[]; // Keep it simple for now, array of TimeEntry
 }

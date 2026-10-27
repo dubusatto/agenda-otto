@@ -10,14 +10,38 @@ export interface ScheduledTaskInput {
   end: Date;
   color?: string | null;
   completed?: boolean;
+  hasCounter?: boolean;
   rrule?: string | null;
   exdates?: Date[];
   instances?: {
     id?: string;
     instanceDate: Date;
     completed: boolean;
+    count?: number;
     timeEntries?: any[];
   }[];
+}
+
+function formatTaskTitle(
+  baseTitle: string,
+  completed: boolean,
+  hasCounter: boolean,
+  count: number
+): string {
+  const countSuffix = hasCounter && count > 0 ? ` (${count}x)` : '';
+  const completedSuffix = completed ? ' (Concluída)' : '';
+  return `✓ ${baseTitle}${countSuffix}${completedSuffix}`;
+}
+
+export function computeNextCounterState(
+  currentCount: number,
+  delta: number
+): { count: number; completed: boolean } {
+  const nextCount = Math.max(0, currentCount + delta);
+  return {
+    count: nextCount,
+    completed: nextCount > 0,
+  };
 }
 
 export function expandScheduledTaskOccurrences(
@@ -25,6 +49,12 @@ export function expandScheduledTaskOccurrences(
   timeMin: Date | string,
   timeMax: Date | string
 ): CalendarEvent[] {
+  const hasCounter = !!st.hasCounter;
+  const totalCount = (st.instances || []).reduce(
+    (sum, inst) => sum + (inst.count || 0),
+    0
+  );
+
   const nonRecurringInstance =
     st.instances && st.instances.length > 0
       ? [...st.instances].sort(
@@ -35,16 +65,20 @@ export function expandScheduledTaskOccurrences(
   const isCompleted = nonRecurringInstance
     ? nonRecurringInstance.completed
     : !!st.completed;
+  const nonRecurringCount = nonRecurringInstance?.count || 0;
 
   const baseEvent: CalendarEvent = {
     id: st.id,
-    title: isCompleted ? `✓ ${st.title} (Concluída)` : `✓ ${st.title}`,
+    title: formatTaskTitle(st.title, isCompleted, hasCounter, nonRecurringCount),
     start: st.start,
     end: st.end,
     allDay: false,
     calendarId: 'local-db',
     backgroundColor: st.color || getSemanticColor(st.googleTaskId),
     completed: isCompleted,
+    hasCounter,
+    count: nonRecurringCount,
+    totalCount,
     rrule: st.rrule || undefined,
     timeEntries: nonRecurringInstance?.timeEntries || [],
   };
@@ -74,14 +108,18 @@ export function expandScheduledTaskOccurrences(
           inst => new Date(inst.instanceDate).getTime() === date.getTime()
         );
         const instCompleted = instance?.completed || false;
+        const instCount = instance?.count || 0;
 
         return {
           ...baseEvent,
           id: `${st.id}-${date.getTime()}`,
-          title: instCompleted ? `✓ ${st.title} (Concluída)` : `✓ ${st.title}`,
+          title: formatTaskTitle(st.title, instCompleted, hasCounter, instCount),
           start: date,
           end: new Date(date.getTime() + duration),
           completed: instCompleted,
+          hasCounter,
+          count: instCount,
+          totalCount,
           timeEntries: instance?.timeEntries || [],
         };
       });
