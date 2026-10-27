@@ -24,13 +24,10 @@ export interface ScheduledTaskInput {
 
 function formatTaskTitle(
   baseTitle: string,
-  completed: boolean,
-  hasCounter: boolean,
-  count: number
+  completed: boolean
 ): string {
-  const countSuffix = hasCounter && count > 0 ? ` (${count}x)` : '';
   const completedSuffix = completed ? ' (Concluída)' : '';
-  return `✓ ${baseTitle}${countSuffix}${completedSuffix}`;
+  return `✓ ${baseTitle}${completedSuffix}`;
 }
 
 export function computeNextCounterState(
@@ -88,7 +85,7 @@ export function expandScheduledTaskOccurrences(
 
   const baseEvent: CalendarEvent = {
     id: st.id,
-    title: formatTaskTitle(st.title, isCompleted, hasCounter, nonRecurringCount),
+    title: formatTaskTitle(st.title, isCompleted),
     start: st.start,
     end: st.end,
     allDay: false,
@@ -133,7 +130,7 @@ export function expandScheduledTaskOccurrences(
         return {
           ...baseEvent,
           id: `${st.id}-${date.getTime()}`,
-          title: formatTaskTitle(st.title, instCompleted, hasCounter, instCount),
+          title: formatTaskTitle(st.title, instCompleted),
           start: date,
           end: new Date(date.getTime() + duration),
           completed: instCompleted,

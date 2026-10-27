@@ -169,12 +169,12 @@ describe('Seam 3: Recurrence Engine & Calendar Window (recurrence.ts)', () => {
     expect(events[0].hasCounter).toBe(true);
     expect(events[0].count).toBe(5);
     expect(events[0].totalCount).toBe(8);
-    expect(events[0].title).toBe('✓ Enviar currículos (5x) (Concluída)');
+    expect(events[0].title).toBe('✓ Enviar currículos (Concluída)');
 
     expect(events[1].hasCounter).toBe(true);
     expect(events[1].count).toBe(3);
     expect(events[1].totalCount).toBe(8);
-    expect(events[1].title).toBe('✓ Enviar currículos (3x) (Concluída)');
+    expect(events[1].title).toBe('✓ Enviar currículos (Concluída)');
   });
 
   it('auto-completes when counter goes from 0 to 1, auto-uncompletes when returning to 0, and never goes negative', () => {
