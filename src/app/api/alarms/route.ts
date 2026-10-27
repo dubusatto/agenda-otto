@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       pendingTestAlarm = {
         id: "test-" + Date.now(),
         title: testAlarm?.title || "TESTE DE ALARME",
-        message: testAlarm?.message || "Este é um teste visual do aviso de impacto do Agenda Otto!",
+        message: testAlarm?.message || "Este é um teste visual do aviso de impacto do Agenda Edu!",
         color: testAlarm?.color || "#ef4444",
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         isTest: true,

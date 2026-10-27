@@ -133,7 +133,7 @@ def show_impact_alarm(root, alarm):
         frame.place(relx=0.5, rely=0.5, anchor="center")
 
         # Top Badge
-        badge_text = "⚡ TESTE VISUAL" if is_test else f"⏰ AGENDA OTTO • {alarm.get('time', '')}"
+        badge_text = "⚡ TESTE VISUAL" if is_test else f"⏰ AGENDA EDU • {alarm.get('time', '')}"
         lbl_badge = tk.Label(
             frame, 
             text=f"  {badge_text}  ", 
