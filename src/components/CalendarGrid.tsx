@@ -62,9 +62,9 @@ function DateCellWrapper({ children, value }: any) {
 function CustomEvent({ event }: any) {
   const showCountBadge = event.hasCounter && (event.count || 0) > 0;
   return (
-    <div className="w-full h-full flex items-center gap-1 overflow-hidden px-1.5 leading-none py-0.5">
+    <div className="w-full h-full flex items-start gap-1 overflow-hidden px-1.5 pt-0.5 leading-tight">
       {showCountBadge && (
-        <span className="shrink-0 bg-white text-indigo-950 font-mono font-extrabold text-[10px] px-1 py-0.5 rounded shadow-2xs">
+        <span className="shrink-0 bg-white text-indigo-950 font-mono font-extrabold text-[10px] leading-none px-1 py-0.5 rounded shadow-2xs">
           {event.count}x
         </span>
       )}
@@ -171,6 +171,9 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         endAccessor="end"
         // @ts-ignore: Returning null explicitly removes the title attribute from the DOM, avoiding empty string bugs that suppress children tooltips
         tooltipAccessor={() => null}
+        formats={{
+          eventTimeRangeFormat: () => '',
+        }}
         view={view}
         onView={setView}
         date={date}
