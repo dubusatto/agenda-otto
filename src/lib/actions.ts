@@ -673,6 +673,84 @@ export async function toggleScheduledTaskCounterMode(id: string, hasCounter: boo
   return updated;
 }
 
+export async function setScheduledTaskCount(id: string, targetCount: number) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const [baseId, dateString] = id.split('-');
+  const task = await prisma.scheduledTask.findUnique({
+    where: { id: baseId },
+    include: { instances: true }
+  });
+  if (!task || task.userEmail !== session.user.email) throw new Error("Unauthorized");
+
+  const { computeNextCounterState } = await import('@/lib/recurrence');
+  const { count, completed } = computeNextCounterState(0, targetCount);
+
+  if (dateString) {
+    const instanceDate = new Date(parseInt(dateString));
+    await prisma.taskInstance.upsert({
+      where: {
+        scheduledTaskId_instanceDate: {
+          scheduledTaskId: baseId,
+          instanceDate
+        }
+      },
+      create: {
+        scheduledTaskId: baseId,
+        instanceDate,
+        count,
+        completed,
+        completedAt: completed ? new Date() : null
+      },
+      update: {
+        count,
+        completed,
+        completedAt: completed ? new Date() : null
+      }
+    });
+  } else {
+    const latestInstance = task.instances.length > 0
+      ? [...task.instances].sort((a, b) => b.instanceDate.getTime() - a.instanceDate.getTime())[0]
+      : undefined;
+
+    if (latestInstance) {
+      await prisma.$transaction([
+        prisma.taskInstance.update({
+          where: { id: latestInstance.id },
+          data: {
+            count,
+            completed,
+            completedAt: completed ? (latestInstance.completedAt || new Date()) : null
+          }
+        }),
+        prisma.scheduledTask.update({
+          where: { id: baseId },
+          data: { completed }
+        })
+      ]);
+    } else {
+      await prisma.$transaction([
+        prisma.taskInstance.create({
+          data: {
+            scheduledTaskId: baseId,
+            instanceDate: task.start,
+            count,
+            completed,
+            completedAt: completed ? new Date() : null
+          }
+        }),
+        prisma.scheduledTask.update({
+          where: { id: baseId },
+          data: { completed }
+        })
+      ]);
+    }
+  }
+
+  revalidatePath("/");
+}
+
 export async function adjustScheduledTaskCount(id: string, delta: number) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.email) throw new Error("Unauthorized");

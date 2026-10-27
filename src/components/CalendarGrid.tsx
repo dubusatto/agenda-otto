@@ -60,9 +60,15 @@ function DateCellWrapper({ children, value }: any) {
 }
 
 function CustomEvent({ event }: any) {
+  const showCountBadge = event.hasCounter && (event.count || 0) > 0;
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden px-1 leading-none py-0.5">
+    <div className="w-full h-full flex items-center justify-between gap-1 overflow-hidden px-1 leading-none py-0.5">
       <span className="font-bold text-[11px] truncate">{event.title}</span>
+      {showCountBadge && (
+        <span className="shrink-0 bg-white/95 text-gray-900 font-mono font-extrabold text-[10px] px-1 py-0.5 rounded shadow-2xs">
+          {event.count}x
+        </span>
+      )}
     </div>
   );
 }
@@ -159,7 +165,6 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         }}
         onSelectEvent={(event) => {
           setSelectedEvent(event as any);
-          router.refresh();
         }}
         onEventDrop={handleEventDrop}
         onEventResize={handleEventResize}

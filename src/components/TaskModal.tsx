@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarEvent } from "@/lib/google";
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useRef } from "react";
 import { 
   updateScheduledTaskRecurrence, 
   deleteScheduledTask, 
@@ -12,7 +12,7 @@ import {
   deleteCheckIn,
   toggleCheckInLunchDiscount,
   toggleScheduledTaskCounterMode,
-  adjustScheduledTaskCount
+  setScheduledTaskCount
 } from "@/lib/actions";
 import {
   calculateCheckInIntervals,
@@ -97,9 +97,20 @@ export default function TaskModal({
   const [recurrenceType, setRecurrenceType] = useState<'NONE' | 'WEEKLY'>('NONE');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [checkInText, setCheckInText] = useState("");
+  const [localHasCounter, setLocalHasCounter] = useState<boolean>(false);
+  const [localCount, setLocalCount] = useState<number>(0);
+  const [localTotalCount, setLocalTotalCount] = useState<number>(0);
+  const [localCompleted, setLocalCompleted] = useState<boolean>(false);
+  const countDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Sync state when modal opens
   useEffect(() => {
+    if (event) {
+      setLocalHasCounter(!!event.hasCounter);
+      setLocalCount(event.count || 0);
+      setLocalTotalCount(event.totalCount || 0);
+      setLocalCompleted(!!event.completed);
+    }
     if (event?.rrule) {
       if (event.rrule.includes('FREQ=WEEKLY')) {
         setRecurrenceType('WEEKLY');
@@ -286,7 +297,7 @@ export default function TaskModal({
                 </div>
               )}
 
-              {/* Repetition Counter Section (Opt-in) */}
+              {/* Repetition Counter Section (Opt-in with Instant Optimistic UI) */}
               <div className="pt-4 border-t border-gray-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -294,43 +305,49 @@ export default function TaskModal({
                   </div>
                   <button
                     type="button"
-                    disabled={isPending}
-                    onClick={() =>
-                      startTransition(async () => {
-                        await toggleScheduledTaskCounterMode(event.id, !event.hasCounter);
-                      })
-                    }
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                      event.hasCounter ? 'bg-indigo-600' : 'bg-gray-200'
+                    onClick={() => {
+                      const nextHasCounter = !localHasCounter;
+                      setLocalHasCounter(nextHasCounter);
+                      toggleScheduledTaskCounterMode(event.id, nextHasCounter).catch(console.error);
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 ease-in-out ${
+                      localHasCounter ? 'bg-indigo-600' : 'bg-gray-200'
                     }`}
-                    title={event.hasCounter ? 'Desativar contador' : 'Ativar contador de repetições'}
+                    title={localHasCounter ? 'Desativar contador' : 'Ativar contador de repetições'}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        event.hasCounter ? 'translate-x-5' : 'translate-x-0'
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-150 ease-in-out ${
+                        localHasCounter ? 'translate-x-5' : 'translate-x-0'
                       }`}
                     />
                   </button>
                 </div>
 
-                {event.hasCounter && (
+                {localHasCounter && (
                   <div className="mt-3 bg-indigo-50/60 border border-indigo-100 rounded-xl p-3.5 flex items-center justify-between animate-in fade-in duration-150">
                     <div>
                       <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide">Feito neste dia</p>
                       <p className="text-xs text-indigo-600 font-medium mt-0.5">
-                        Total acumulado: <span className="font-bold">{event.totalCount || 0}</span>
+                        Total no mês: <span className="font-bold">{localTotalCount}</span>
                       </p>
                     </div>
 
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
-                        disabled={isPending || (event.count || 0) <= 0}
-                        onClick={() =>
-                          startTransition(async () => {
-                            await adjustScheduledTaskCount(event.id, -1);
-                          })
-                        }
+                        disabled={localCount <= 0}
+                        onClick={() => {
+                          if (localCount <= 0) return;
+                          const nextCount = Math.max(0, localCount - 1);
+                          setLocalCount(nextCount);
+                          setLocalTotalCount(prev => Math.max(0, prev - 1));
+                          setLocalCompleted(nextCount > 0);
+
+                          if (countDebounceRef.current) clearTimeout(countDebounceRef.current);
+                          countDebounceRef.current = setTimeout(() => {
+                            setScheduledTaskCount(event.id, nextCount).catch(console.error);
+                          }, 250);
+                        }}
                         className="w-10 h-10 rounded-xl bg-white border border-indigo-200 text-indigo-700 font-bold text-lg flex items-center justify-center shadow-xs hover:bg-indigo-100 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
                         title="Diminuir 1 (corrige clique acidental)"
                       >
@@ -338,18 +355,23 @@ export default function TaskModal({
                       </button>
 
                       <span className="min-w-[36px] text-center font-mono text-2xl font-extrabold text-indigo-950">
-                        {event.count || 0}
+                        {localCount}
                       </span>
 
                       <button
                         type="button"
-                        disabled={isPending}
-                        onClick={() =>
-                          startTransition(async () => {
-                            await adjustScheduledTaskCount(event.id, 1);
-                          })
-                        }
-                        className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold text-lg flex items-center justify-center shadow-sm hover:bg-indigo-700 active:scale-95 disabled:opacity-50 transition"
+                        onClick={() => {
+                          const nextCount = localCount + 1;
+                          setLocalCount(nextCount);
+                          setLocalTotalCount(prev => prev + 1);
+                          setLocalCompleted(true);
+
+                          if (countDebounceRef.current) clearTimeout(countDebounceRef.current);
+                          countDebounceRef.current = setTimeout(() => {
+                            setScheduledTaskCount(event.id, nextCount).catch(console.error);
+                          }, 250);
+                        }}
+                        className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold text-lg flex items-center justify-center shadow-sm hover:bg-indigo-700 active:scale-95 transition"
                         title="Adicionar +1 repetição"
                       >
                         +
@@ -557,15 +579,17 @@ export default function TaskModal({
                   </button>
                   <button 
                     onClick={() => {
+                      const nextCompleted = !localCompleted;
+                      setLocalCompleted(nextCompleted);
                       startTransition(async () => {
-                        await toggleScheduledTaskCompletion(event.id, !event.completed);
+                        await toggleScheduledTaskCompletion(event.id, nextCompleted);
                         onClose();
                       });
                     }}
                     disabled={isPending}
                     className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm"
                   >
-                    {event.completed ? 'Reabrir Tarefa' : 'Marcar Concluída'}
+                    {localCompleted ? 'Reabrir Tarefa' : 'Marcar Concluída'}
                   </button>
                 </div>
               </div>

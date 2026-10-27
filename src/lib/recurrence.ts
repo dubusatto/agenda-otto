@@ -44,16 +44,31 @@ export function computeNextCounterState(
   };
 }
 
+function calculateMonthlyCount(
+  instances: ScheduledTaskInput['instances'] = [],
+  referenceDate: Date
+): number {
+  const targetYear = referenceDate.getUTCFullYear();
+  const targetMonth = referenceDate.getUTCMonth();
+
+  return instances.reduce((sum, inst) => {
+    const instDate = new Date(inst.instanceDate);
+    if (
+      instDate.getUTCFullYear() === targetYear &&
+      instDate.getUTCMonth() === targetMonth
+    ) {
+      return sum + (inst.count || 0);
+    }
+    return sum;
+  }, 0);
+}
+
 export function expandScheduledTaskOccurrences(
   st: ScheduledTaskInput,
   timeMin: Date | string,
   timeMax: Date | string
 ): CalendarEvent[] {
   const hasCounter = !!st.hasCounter;
-  const totalCount = (st.instances || []).reduce(
-    (sum, inst) => sum + (inst.count || 0),
-    0
-  );
 
   const nonRecurringInstance =
     st.instances && st.instances.length > 0
@@ -66,6 +81,10 @@ export function expandScheduledTaskOccurrences(
     ? nonRecurringInstance.completed
     : !!st.completed;
   const nonRecurringCount = nonRecurringInstance?.count || 0;
+  const baseMonthlyCount = calculateMonthlyCount(
+    st.instances,
+    new Date(st.start)
+  );
 
   const baseEvent: CalendarEvent = {
     id: st.id,
@@ -78,7 +97,7 @@ export function expandScheduledTaskOccurrences(
     completed: isCompleted,
     hasCounter,
     count: nonRecurringCount,
-    totalCount,
+    totalCount: baseMonthlyCount,
     rrule: st.rrule || undefined,
     timeEntries: nonRecurringInstance?.timeEntries || [],
   };
@@ -109,6 +128,7 @@ export function expandScheduledTaskOccurrences(
         );
         const instCompleted = instance?.completed || false;
         const instCount = instance?.count || 0;
+        const monthlyTotalCount = calculateMonthlyCount(st.instances, date);
 
         return {
           ...baseEvent,
@@ -119,7 +139,7 @@ export function expandScheduledTaskOccurrences(
           completed: instCompleted,
           hasCounter,
           count: instCount,
-          totalCount,
+          totalCount: monthlyTotalCount,
           timeEntries: instance?.timeEntries || [],
         };
       });
