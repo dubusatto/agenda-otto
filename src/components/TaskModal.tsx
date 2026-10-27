@@ -87,11 +87,13 @@ function LiveTotalTimer({ pastTimeMs, activeStartTime, lunchDiscountMs = 0 }: { 
 export default function TaskModal({ 
   isOpen, 
   onClose, 
-  event 
+  event,
+  onOptimisticUpdate
 }: { 
   isOpen: boolean, 
   onClose: () => void, 
-  event: CalendarEvent | null 
+  event: CalendarEvent | null,
+  onOptimisticUpdate?: (eventId: string, patch: Partial<CalendarEvent>) => void
 }) {
   const [isPending, startTransition] = useTransition();
   const [recurrenceType, setRecurrenceType] = useState<'NONE' | 'WEEKLY'>('NONE');
@@ -308,6 +310,7 @@ export default function TaskModal({
                     onClick={() => {
                       const nextHasCounter = !localHasCounter;
                       setLocalHasCounter(nextHasCounter);
+                      onOptimisticUpdate?.(event.id, { hasCounter: nextHasCounter });
                       toggleScheduledTaskCounterMode(event.id, nextHasCounter).catch(console.error);
                     }}
                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 ease-in-out ${
@@ -339,14 +342,21 @@ export default function TaskModal({
                         onClick={() => {
                           if (localCount <= 0) return;
                           const nextCount = Math.max(0, localCount - 1);
+                          const nextTotal = Math.max(0, localTotalCount - 1);
+                          const nextCompleted = nextCount > 0;
                           setLocalCount(nextCount);
-                          setLocalTotalCount(prev => Math.max(0, prev - 1));
-                          setLocalCompleted(nextCount > 0);
+                          setLocalTotalCount(nextTotal);
+                          setLocalCompleted(nextCompleted);
+                          onOptimisticUpdate?.(event.id, {
+                            count: nextCount,
+                            totalCount: nextTotal,
+                            completed: nextCompleted,
+                          });
 
                           if (countDebounceRef.current) clearTimeout(countDebounceRef.current);
                           countDebounceRef.current = setTimeout(() => {
                             setScheduledTaskCount(event.id, nextCount).catch(console.error);
-                          }, 250);
+                          }, 200);
                         }}
                         className="w-10 h-10 rounded-xl bg-white border border-indigo-200 text-indigo-700 font-bold text-lg flex items-center justify-center shadow-xs hover:bg-indigo-100 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
                         title="Diminuir 1 (corrige clique acidental)"
@@ -362,14 +372,20 @@ export default function TaskModal({
                         type="button"
                         onClick={() => {
                           const nextCount = localCount + 1;
+                          const nextTotal = localTotalCount + 1;
                           setLocalCount(nextCount);
-                          setLocalTotalCount(prev => prev + 1);
+                          setLocalTotalCount(nextTotal);
                           setLocalCompleted(true);
+                          onOptimisticUpdate?.(event.id, {
+                            count: nextCount,
+                            totalCount: nextTotal,
+                            completed: true,
+                          });
 
                           if (countDebounceRef.current) clearTimeout(countDebounceRef.current);
                           countDebounceRef.current = setTimeout(() => {
                             setScheduledTaskCount(event.id, nextCount).catch(console.error);
-                          }, 250);
+                          }, 200);
                         }}
                         className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold text-lg flex items-center justify-center shadow-sm hover:bg-indigo-700 active:scale-95 transition"
                         title="Adicionar +1 repetição"

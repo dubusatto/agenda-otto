@@ -64,6 +64,18 @@ body {
   color: #9ca3af !important; /* gray-400 */
 }
 
+/* Give 30-min event blocks 100% of their width/height for the task title & counter badge */
+.rbc-day-slot .rbc-event-label {
+  display: none !important;
+}
+
+.rbc-day-slot .rbc-event-content {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
 /* Mobile & Landscape Phone Responsive Overrides (< 1024px) */
 @media (max-width: 1023px) {
   .rbc-toolbar {

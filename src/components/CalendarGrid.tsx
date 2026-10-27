@@ -62,13 +62,13 @@ function DateCellWrapper({ children, value }: any) {
 function CustomEvent({ event }: any) {
   const showCountBadge = event.hasCounter && (event.count || 0) > 0;
   return (
-    <div className="w-full h-full flex items-center justify-between gap-1 overflow-hidden px-1 leading-none py-0.5">
-      <span className="font-bold text-[11px] truncate">{event.title}</span>
+    <div className="w-full h-full flex items-center gap-1 overflow-hidden px-1.5 leading-none py-0.5">
       {showCountBadge && (
-        <span className="shrink-0 bg-white/95 text-gray-900 font-mono font-extrabold text-[10px] px-1 py-0.5 rounded shadow-2xs">
+        <span className="shrink-0 bg-white text-indigo-950 font-mono font-extrabold text-[10px] px-1 py-0.5 rounded shadow-2xs">
           {event.count}x
         </span>
       )}
+      <span className="font-bold text-[11px] truncate">{event.title}</span>
     </div>
   );
 }
@@ -80,6 +80,26 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [isPending, startTransition] = useTransition();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [newTaskSlot, setNewTaskSlot] = useState<{start: Date, end: Date} | null>(null);
+  const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, Partial<CalendarEvent>>>({});
+
+  const displayEvents = React.useMemo(() => {
+    return events.map(ev =>
+      optimisticOverrides[ev.id] ? { ...ev, ...optimisticOverrides[ev.id] } : ev
+    );
+  }, [events, optimisticOverrides]);
+
+  const handleOptimisticEventUpdate = React.useCallback(
+    (eventId: string, patch: Partial<CalendarEvent>) => {
+      setOptimisticOverrides(prev => ({
+        ...prev,
+        [eventId]: { ...(prev[eventId] || {}), ...patch },
+      }));
+      setSelectedEvent(prev =>
+        prev && prev.id === eventId ? { ...prev, ...patch } : prev
+      );
+    },
+    []
+  );
 
   // Switch to Day view automatically on mobile screens (portrait or landscape) so columns aren't squished
   React.useEffect(() => {
@@ -90,6 +110,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
 
   // Sync selected event when server data updates
   React.useEffect(() => {
+    setOptimisticOverrides({});
     if (selectedEvent) {
       const updated = events.find(e => e.id === selectedEvent.id);
       if (updated) setSelectedEvent(updated);
@@ -145,7 +166,7 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
     <div className={`h-full w-full ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
       <DnDCalendar
         localizer={localizer}
-        events={events}
+        events={displayEvents}
         startAccessor="start"
         endAccessor="end"
         // @ts-ignore: Returning null explicitly removes the title attribute from the DOM, avoiding empty string bugs that suppress children tooltips
@@ -193,7 +214,8 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
       <TaskModal 
         isOpen={!!selectedEvent} 
         onClose={() => setSelectedEvent(null)} 
-        event={selectedEvent} 
+        event={selectedEvent}
+        onOptimisticUpdate={handleOptimisticEventUpdate}
       />
       <CreateTaskModal
         isOpen={!!newTaskSlot}
