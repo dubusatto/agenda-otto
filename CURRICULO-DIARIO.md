@@ -1,7 +1,7 @@
 # Registro de Atividades do Diário (Agenda Edu)
 
-> **Atualizado automaticamente em:** 03/11/2026 às 11:37  
-> **Período registrado:** 04/09/2026 a 30/10/2026 (78 check-ins)
+> **Atualizado automaticamente em:** 03/11/2026 às 13:03  
+> **Período registrado:** 04/09/2026 a 03/11/2026 (79 check-ins)
 
 ---
 
@@ -536,4 +536,13 @@
 - Implementação do núcleo do roteador (supabase/functions/_shared/ai: política, preços, validação, roteador, callAi) com TDD e prova de mutação; 329 testes passando, tsc limpo e deno check ok.
 - Guarda de CI: falha se surgir função de IA fora do sistema de tiers ou modelo citado fora da política; falha na main dispara a issue main-quebrada por e-mail.
 - PR #15 aberto (núcleo + guarda, sem mudança em produção), aguardando CI, aprovação e merge. Migração das 15 funções para o roteador fica para segunda (02/11), por causa do CEO no chat do Lovable.
+
+## 03/11/2026
+
+- 03/11/2026 — Plataforma Otto (finance_app / frontend_app2 / Atlas)
+- Gestão do Cliente → Cadastro ("não consigo cadastrar"): diagnóstico completo. Backend OK (14 testes de integração reais com HTTP: Stakeholders, Equipe Otto, Entregáveis Contratados, Mapa de Contexto, Perfil). Causa em produção: 3 tabelas sem migration (client_stakeholders, client_team_members, client_deliverables) → erro 500; migrations rodadas. As telas agora mostram o erro do servidor (antes viravam "Nenhum cadastrado"), mantêm o formulário aberto e enviam campo apagado na edição.
+- CI: teste de integração do fluxo de entregas corrigido (datas relativas a hoje, quebrou na virada para novembro). Run em staging: e2e, integration e slow verdes; unit com 1 falha em 2.601 (teste de tempo do rate limiting, 0,65s vs 0,1s — flaky, sem relação com as mudanças).
+- Hartbau sem ciclos após set/26: causa raiz no Atlas (otto_client_scope escolhia o projeto encerrado Trapezio, kickoff 10/2025, em vez do 042401 ativo). Migration 0224 (projeto vigente) aplicada; ciclos voltaram até set/27.
+- Clientes com vários projetos (ex.: Hartbau SIAFOP II): migration 0225 + teste SQL (projeto = não encerrado mais antigo; entregáveis de todos os projetos somam; entregável de projeto encerrado sai do escopo). Aplicada e validada (042401, active, 10 entregáveis; M&A do Trapezio fora).
+- Em andamento: aproveitamento de espaço na Jornada (pedido do Head de Delivery, prints a 80/100/120%).
 
