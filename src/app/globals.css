@@ -157,3 +157,123 @@ body {
     overflow: visible !important;
   }
 }
+
+/* ==========================================
+   Dark Mode Overrides (html.dark)
+   ========================================== */
+html.dark body {
+  background-color: #0b0f19 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .bg-gray-100 {
+  background-color: #0b0f19 !important;
+}
+
+html.dark .bg-white {
+  background-color: #131b2e !important;
+}
+
+html.dark .bg-gray-50 {
+  background-color: #1a243b !important;
+}
+
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-b,
+html.dark .border-t,
+html.dark .border-l {
+  border-color: #26334d !important;
+}
+
+html.dark .text-gray-900,
+html.dark .text-gray-800 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-gray-700,
+html.dark .text-gray-600 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-gray-500,
+html.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+/* React Big Calendar Dark Mode */
+html.dark .rbc-calendar {
+  color: #e2e8f0 !important;
+}
+
+html.dark .rbc-header {
+  color: #e2e8f0 !important;
+  border-color: #26334d !important;
+  background-color: #162036 !important;
+}
+
+html.dark .rbc-toolbar-label {
+  color: #f8fafc !important;
+}
+
+html.dark .rbc-toolbar button {
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+  background-color: #1a243b !important;
+}
+
+html.dark .rbc-toolbar button:hover {
+  background-color: #26334d !important;
+  color: #ffffff !important;
+}
+
+html.dark .rbc-toolbar button.rbc-active {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+}
+
+html.dark .rbc-time-view,
+html.dark .rbc-month-view,
+html.dark .rbc-time-header,
+html.dark .rbc-time-header-content,
+html.dark .rbc-time-content,
+html.dark .rbc-timeslot-group,
+html.dark .rbc-day-bg,
+html.dark .rbc-month-row {
+  border-color: #232f46 !important;
+}
+
+html.dark .rbc-day-slot .rbc-time-slot {
+  border-top-color: #1b2538 !important;
+}
+
+html.dark .rbc-time-gutter .rbc-timeslot-group {
+  color: #94a3b8 !important;
+  background-color: #131b2e !important;
+}
+
+html.dark .rbc-today {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+html.dark .rbc-off-range-bg {
+  background-color: #0f1524 !important;
+}
+
+html.dark .rbc-month-view .rbc-date-cell {
+  color: #cbd5e1 !important;
+}
+
+html.dark .rbc-off-range {
+  color: #475569 !important;
+}

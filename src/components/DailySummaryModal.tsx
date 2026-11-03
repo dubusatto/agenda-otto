@@ -117,6 +117,73 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
     ? "Hoje, " + format(selectedDate, "dd 'de' MMM", { locale: ptBR })
     : format(selectedDate, "dd 'de' MMMM", { locale: ptBR });
 
+  const handleExportAllMarkdown = () => {
+    const allCheckins: {
+      taskTitle: string;
+      note: string;
+      timestamp: Date;
+      durationMs: number;
+      hasLunchDiscount: boolean;
+      dateKey: string;
+    }[] = [];
+
+    localTasks.forEach(task => {
+      task.instances?.forEach((instance: any) => {
+        instance.timeEntries?.forEach((entry: any) => {
+          const computed = calculateCheckInIntervals(entry);
+          computed.forEach(c => {
+            const ts = new Date(c.timestamp);
+            allCheckins.push({
+              taskTitle: task.title,
+              note: c.note,
+              timestamp: ts,
+              durationMs: c.durationMs,
+              hasLunchDiscount: c.hasLunchDiscount,
+              dateKey: format(ts, "yyyy-MM-dd"),
+            });
+          });
+        });
+      });
+    });
+
+    allCheckins.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    const byDate = new Map<string, typeof allCheckins>();
+    allCheckins.forEach(c => {
+      if (!byDate.has(c.dateKey)) byDate.set(c.dateKey, []);
+      byDate.get(c.dateKey)!.push(c);
+    });
+
+    const fmtDur = (ms: number) => {
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      return `${h}h ${String(m).padStart(2, "0")}m`;
+    };
+
+    let md = `# Histórico Completo do Diário (Agenda Edu)\n\n`;
+    md += `> Exportado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}\n\n---\n\n`;
+
+    for (const [dateKey, items] of byDate.entries()) {
+      const [y, m, d] = dateKey.split("-");
+      const totalDayMs = items.reduce((acc, i) => acc + i.durationMs, 0);
+      md += `## 📅 ${d}/${m}/${y} (Total: ${fmtDur(totalDayMs)})\n\n`;
+      for (const item of items) {
+        const timeStr = format(item.timestamp, "HH:mm");
+        const lunchTag = item.hasLunchDiscount ? " *(🥪 -1h almoço)*" : "";
+        md += `### 🕒 ${timeStr} — ${item.taskTitle} (\`${fmtDur(item.durationMs)}\`)${lunchTag}\n\n`;
+        md += `${item.note}\n\n---\n\n`;
+      }
+    }
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `curriculo-diario-${format(new Date(), "yyyy-MM-dd")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm"
@@ -160,12 +227,21 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
             )}
           </div>
 
-          <button 
-            onClick={onClose}
-            className="hidden sm:block text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleExportAllMarkdown}
+              className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+              title="Baixar todo o histórico do Diário em arquivo .md"
+            >
+              📥 Exportar .md
+            </button>
+            <button 
+              onClick={onClose}
+              className="hidden sm:block text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8">

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { getCalendarEvents, getGoogleTasks, getGoogleTaskLists } from "@/lib/google";
 import { getScheduledTasks, createScheduledTask } from "@/lib/actions";
 import DashboardClient from "@/components/DashboardClient";
+import ThemeToggle from "@/components/ThemeToggle";
 import { subMonths, addMonths } from "date-fns";
 import { expandScheduledTaskOccurrences } from "@/lib/recurrence";
 
@@ -55,8 +56,9 @@ export default async function Dashboard() {
           </div>
           <h1 className="text-base lg:text-xl font-bold text-gray-900 tracking-tight">Agenda Edu</h1>
         </div>
-        <div className="flex items-center gap-2 lg:gap-4">
-          <div className="text-xs lg:text-sm text-gray-600 font-medium bg-gray-50 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border border-gray-200 truncate max-w-[160px] lg:max-w-none">
+        <div className="flex items-center gap-2 lg:gap-3">
+          <ThemeToggle />
+          <div className="text-xs lg:text-sm text-gray-600 font-medium bg-gray-50 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border border-gray-200 truncate max-w-[140px] lg:max-w-none">
             {session.user?.name}
           </div>
         </div>
