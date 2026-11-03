@@ -146,7 +146,7 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
       });
     });
 
-    allCheckins.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    allCheckins.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     const byDate = new Map<string, typeof allCheckins>();
     allCheckins.forEach(c => {
@@ -154,24 +154,29 @@ export default function DailySummaryModal({ isOpen, onClose, tasks, localTasks }
       byDate.get(c.dateKey)!.push(c);
     });
 
-    const fmtDur = (ms: number) => {
-      const h = Math.floor(ms / 3600000);
-      const m = Math.floor((ms % 3600000) / 60000);
-      return `${h}h ${String(m).padStart(2, "0")}m`;
-    };
+    const formatNoteLines = (note: string) =>
+      note
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0 && l.toLowerCase() !== "opa")
+        .map(line => {
+          if (/^[-*•_]\s+/.test(line)) return `- ${line.replace(/^[-*•_]\s+/, "").trim()}`;
+          if (/^\d+[.)]\s+/.test(line)) return `- ${line.replace(/^\d+[.)]\s+/, "").trim()}`;
+          return `- ${line}`;
+        });
 
-    let md = `# Histórico Completo do Diário (Agenda Edu)\n\n`;
+    let md = `# Registro de Atividades do Diário (Agenda Edu)\n\n`;
     md += `> Exportado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}\n\n---\n\n`;
 
     for (const [dateKey, items] of byDate.entries()) {
       const [y, m, d] = dateKey.split("-");
-      const totalDayMs = items.reduce((acc, i) => acc + i.durationMs, 0);
-      md += `## 📅 ${d}/${m}/${y} (Total: ${fmtDur(totalDayMs)})\n\n`;
+      const dayLines: string[] = [];
       for (const item of items) {
-        const timeStr = format(item.timestamp, "HH:mm");
-        const lunchTag = item.hasLunchDiscount ? " *(🥪 -1h almoço)*" : "";
-        md += `### 🕒 ${timeStr} — ${item.taskTitle} (\`${fmtDur(item.durationMs)}\`)${lunchTag}\n\n`;
-        md += `${item.note}\n\n---\n\n`;
+        dayLines.push(...formatNoteLines(item.note));
+      }
+      if (dayLines.length > 0) {
+        md += `## ${d}/${m}/${y}\n\n`;
+        md += `${dayLines.join("\n")}\n\n`;
       }
     }
 
