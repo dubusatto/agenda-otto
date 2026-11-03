@@ -319,7 +319,8 @@ export default function TaskModal({
                     title={localHasCounter ? 'Desativar contador' : 'Ativar contador de repetições'}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-150 ease-in-out ${
+                      style={{ backgroundColor: '#ffffff' }}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-150 ease-in-out ${
                         localHasCounter ? 'translate-x-5' : 'translate-x-0'
                       }`}
                     />
@@ -327,10 +328,10 @@ export default function TaskModal({
                 </div>
 
                 {localHasCounter && (
-                  <div className="mt-3 bg-indigo-50/60 border border-indigo-100 rounded-xl p-3.5 flex items-center justify-between animate-in fade-in duration-150">
+                  <div className="counter-card mt-3 bg-indigo-50/60 border border-indigo-100 rounded-xl p-3.5 flex items-center justify-between animate-in fade-in duration-150">
                     <div>
-                      <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide">Feito neste dia</p>
-                      <p className="text-xs text-indigo-600 font-medium mt-0.5">
+                      <p className="counter-label text-xs font-bold text-indigo-900 uppercase tracking-wide">Feito neste dia</p>
+                      <p className="counter-sublabel text-xs text-indigo-600 font-medium mt-0.5">
                         Total no mês: <span className="font-bold">{localTotalCount}</span>
                       </p>
                     </div>
@@ -358,13 +359,13 @@ export default function TaskModal({
                             setScheduledTaskCount(event.id, nextCount).catch(console.error);
                           }, 200);
                         }}
-                        className="w-10 h-10 rounded-xl bg-white border border-indigo-200 text-indigo-700 font-bold text-lg flex items-center justify-center shadow-xs hover:bg-indigo-100 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        className="counter-minus-btn w-10 h-10 rounded-xl bg-white border border-indigo-200 text-indigo-700 font-bold text-lg flex items-center justify-center shadow-xs hover:bg-indigo-100 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
                         title="Diminuir 1 (corrige clique acidental)"
                       >
                         −
                       </button>
 
-                      <span className="min-w-[36px] text-center font-mono text-2xl font-extrabold text-indigo-950">
+                      <span className="counter-value min-w-[36px] text-center font-mono text-2xl font-extrabold text-indigo-950">
                         {localCount}
                       </span>
 

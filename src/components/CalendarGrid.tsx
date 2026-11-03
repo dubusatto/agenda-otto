@@ -64,7 +64,10 @@ function CustomEvent({ event }: any) {
   return (
     <div className="w-full h-full flex items-start gap-1 overflow-hidden px-1.5 pt-0.5 leading-tight">
       {showCountBadge && (
-        <span className="shrink-0 bg-white text-indigo-950 font-mono font-extrabold text-[10px] leading-none px-1 py-0.5 rounded shadow-2xs">
+        <span
+          style={{ backgroundColor: '#ffffff', color: '#1e1b4b' }}
+          className="shrink-0 font-mono font-extrabold text-[10px] leading-none px-1 py-0.5 rounded shadow-2xs"
+        >
           {event.count}x
         </span>
       )}

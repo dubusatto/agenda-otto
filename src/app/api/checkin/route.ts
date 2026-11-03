@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
+import { syncCurriculoMd } from '@/lib/curriculoSync';
 
 export async function POST(request: Request) {
   try {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
       }
     });
     
+    await syncCurriculoMd();
     revalidatePath('/');
     console.log("Check-in salvo com sucesso via Claude Code MCP!");
 

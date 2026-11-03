@@ -48,14 +48,27 @@ export async function GET(request: Request) {
     whereClause.userEmail = userEmail;
   }
 
-  const alarms = await prisma.alarm.findMany({
-    where: whereClause,
-    orderBy: { time: "asc" },
-  });
+  const [alarms, checkInCount, latestCheckIn, lunchDiscountCount, completedInstancesCount, counterAgg] = await Promise.all([
+    prisma.alarm.findMany({
+      where: whereClause,
+      orderBy: { time: "asc" },
+    }),
+    prisma.checkIn.count(),
+    prisma.checkIn.findFirst({
+      orderBy: { timestamp: "desc" },
+      select: { id: true, timestamp: true },
+    }),
+    prisma.checkIn.count({ where: { hasLunchDiscount: true } }),
+    prisma.taskInstance.count({ where: { completed: true } }),
+    prisma.taskInstance.aggregate({ _sum: { count: true } }),
+  ]);
+
+  const diarySignature = `${checkInCount}:${latestCheckIn?.id || "none"}:${lunchDiscountCount}:${completedInstancesCount}:${counterAgg._sum.count || 0}`;
 
   return NextResponse.json({
     alarms,
     immediateTrigger: null,
+    diarySignature,
   });
 }
 

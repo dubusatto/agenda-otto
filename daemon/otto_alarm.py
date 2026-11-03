@@ -52,6 +52,22 @@ DAEMON_TOKEN = os.environ.get("ALARM_DAEMON_TOKEN") or env_config.get("ALARM_DAE
 # Track already triggered alarms in the current minute: "alarmId_YYYY-MM-DD_HH:MM"
 triggered_keys = set()
 active_alert_windows = []
+last_diary_signature = None
+
+def trigger_curriculo_sync():
+    """Runs scripts/sync-curriculo.mjs in the background to keep CURRICULO-DIARIO.md updated."""
+    script_path = os.path.join(PROJECT_DIR, "scripts", "sync-curriculo.mjs")
+    if os.path.exists(script_path):
+        try:
+            subprocess.Popen(
+                ["node", script_path],
+                cwd=PROJECT_DIR,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            print("[Daemon] 📄 Disparada sincronização automática de CURRICULO-DIARIO.md")
+        except Exception as err:
+            print("[Daemon] Erro ao sincronizar CURRICULO-DIARIO.md:", err)
 
 def get_monitors():
     """Detects all physical monitors and their offsets via xrandr."""
@@ -233,7 +249,7 @@ def close_all_alert_windows():
 
 def check_alarms_loop(root):
     """Periodic check for upcoming alarms or immediate triggers."""
-    global triggered_keys
+    global triggered_keys, last_diary_signature
 
     now = datetime.now()
     current_hh_mm = now.strftime("%H:%M")
@@ -244,6 +260,12 @@ def check_alarms_loop(root):
 
     data = api_request("/api/alarms")
     if data:
+        # 0. Auto-sync CURRICULO-DIARIO.md when diarySignature changes
+        diary_sig = data.get("diarySignature")
+        if diary_sig and diary_sig != last_diary_signature:
+            last_diary_signature = diary_sig
+            trigger_curriculo_sync()
+
         # 1. Immediate trigger (e.g. from UI "Testar Alarme" button)
         imm = data.get("immediateTrigger")
         if imm:
@@ -302,6 +324,9 @@ def main():
 
     root = tk.Tk()
     root.withdraw() # Hide root window, only show fullscreen alerts when triggered
+
+    # Sync CURRICULO-DIARIO.md immediately on daemon startup
+    trigger_curriculo_sync()
 
     # Start polling
     root.after(1000, lambda: check_alarms_loop(root))

@@ -277,3 +277,24 @@ html.dark .rbc-month-view .rbc-date-cell {
 html.dark .rbc-off-range {
   color: #475569 !important;
 }
+
+/* Counter Card inside TaskModal in Dark Mode */
+html.dark .counter-card {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .counter-label,
+html.dark .counter-value {
+  color: #f8fafc !important;
+}
+
+html.dark .counter-sublabel {
+  color: #a5b4fc !important;
+}
+
+html.dark .counter-minus-btn {
+  background-color: #0f172a !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}

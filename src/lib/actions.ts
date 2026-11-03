@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { syncCurriculoMd } from "@/lib/curriculoSync";
 
 export async function createScheduledTask(data: {
   googleTaskId: string;
@@ -113,6 +114,7 @@ export async function toggleScheduledTaskCompletion(id: string, completed: boole
     ]);
   }
 
+  await syncCurriculoMd();
   revalidatePath("/");
   return task;
 }
@@ -170,6 +172,7 @@ export async function deleteScheduledTask(id: string) {
     where: { id: baseId }
   });
 
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -234,6 +237,7 @@ export async function startTimeTracking(id: string) {
     }
   });
   
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -309,6 +313,7 @@ export async function addCheckIn(id: string, note: string) {
           note
         }
       });
+      await syncCurriculoMd();
       revalidatePath("/");
     }
   }
@@ -361,6 +366,7 @@ export async function deleteCheckIn(checkInId: string) {
     where: { id: checkInId }
   });
 
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -411,6 +417,7 @@ export async function toggleCheckInLunchDiscount(checkInId: string) {
     data: { hasLunchDiscount: nextValue }
   });
 
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -439,6 +446,7 @@ export async function deleteGoogleTaskList(taskListId: string) {
   });
   if (!res.ok) throw new Error(`Failed to delete task list`);
   
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -452,6 +460,7 @@ export async function deleteGoogleTask(taskListId: string, taskId: string) {
   });
   if (!res.ok) throw new Error(`Failed to delete task`);
   
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -468,6 +477,7 @@ export async function clearOldCompletedTasks(tasks: {taskListId: string, taskId:
   );
   
   await Promise.allSettled(promises);
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -495,6 +505,7 @@ export async function cancelScheduledTaskInstance(id: string) {
     where: { scheduledTaskId: baseId, instanceDate: instanceDate }
   });
 
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -545,6 +556,7 @@ export async function extractScheduledTaskInstance(id: string, newStart: Date, n
     });
   }
 
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -618,6 +630,7 @@ export async function deleteAlarm(id: string) {
   if (!alarm || alarm.userEmail !== session.user.email) throw new Error("Unauthorized");
 
   await prisma.alarm.delete({ where: { id } });
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -633,6 +646,7 @@ export async function toggleAlarm(id: string, enabled: boolean) {
     data: { enabled }
   });
 
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -748,6 +762,7 @@ export async function setScheduledTaskCount(id: string, targetCount: number) {
     }
   }
 
+  await syncCurriculoMd();
   revalidatePath("/");
 }
 
@@ -840,5 +855,6 @@ export async function adjustScheduledTaskCount(id: string, delta: number) {
     }
   }
 
+  await syncCurriculoMd();
   revalidatePath("/");
 }
