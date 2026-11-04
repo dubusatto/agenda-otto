@@ -289,16 +289,6 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
             >
               <span>📊</span> Diário
             </button>
-            <button
-              onClick={() => {
-                setIsMobileDrawerOpen(false);
-                window.dispatchEvent(new CustomEvent("open-curriculum-modal"));
-              }}
-              className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold px-2 py-1 rounded transition flex items-center gap-1 shadow-2xs"
-              title="Curadoria Inteligente de Currículo com IA"
-            >
-              <span>🎓</span> Currículo
-            </button>
           </div>
         </div>
         
@@ -492,14 +482,6 @@ export default function Sidebar({ tasks, taskLists, localTasks = [] }: { tasks: 
           className="mobile-dock-btn bg-gray-100 active:bg-gray-200 text-gray-800 font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1"
         >
           <span>📊</span> Diário
-        </button>
-        <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent("open-curriculum-modal"));
-          }}
-          className="mobile-dock-btn bg-indigo-50 active:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1"
-        >
-          <span>🎓</span> Currículo
         </button>
         <button
           onClick={() => setIsAlarmModalOpen(true)}

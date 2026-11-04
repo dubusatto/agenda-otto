@@ -396,19 +396,19 @@ export default function CurriculumModal({ initialData }: CurriculumModalProps) {
 
   return (
     <>
-      {/* Botão Pílula no Cabeçalho */}
+      {/* Botão Compacto no Cabeçalho */}
       <button
         type="button"
         onClick={handleOpenModal}
-        className={`flex items-center gap-1.5 px-2.5 py-1 lg:px-3.5 lg:py-1.5 rounded-full border text-xs lg:text-sm font-bold transition cursor-pointer shadow-2xs ${
+        className={`flex items-center justify-center gap-1 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border text-xs lg:text-sm font-bold transition cursor-pointer shadow-2xs ${
           pendingCount > 0
             ? "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700 animate-pulse"
             : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
         }`}
         title="Curadoria Inteligente de Currículo com IA"
+        aria-label="Curadoria Inteligente de Currículo com IA"
       >
         <span>🎓</span>
-        <span>Currículo</span>
         {pendingCount > 0 && (
           <span className="bg-white text-indigo-700 font-extrabold text-[11px] px-1.5 py-0.2 rounded-full shadow-2xs">
             {pendingCount}
