@@ -147,3 +147,18 @@ export async function syncCurriculoMd(): Promise<void> {
     console.warn('syncCurriculoMd skipped or failed:', (err as Error)?.message);
   }
 }
+
+/**
+ * Atualiza uma cópia local do currículo oficial (CURRICULO-OFICIAL.md) quando rodando localmente.
+ */
+export async function syncOfficialCurriculumMd(content: string): Promise<void> {
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+    return;
+  }
+  try {
+    const filePath = path.join(process.cwd(), 'CURRICULO-OFICIAL.md');
+    fs.writeFileSync(filePath, content, 'utf8');
+  } catch (err) {
+    console.warn('syncOfficialCurriculumMd skipped or failed:', (err as Error)?.message);
+  }
+}

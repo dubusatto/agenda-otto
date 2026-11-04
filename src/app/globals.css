@@ -298,3 +298,40 @@ html.dark .counter-minus-btn {
   border-color: #475569 !important;
   color: #e2e8f0 !important;
 }
+
+/* Curriculum Modal Dark Mode Overrides */
+html.dark .curriculum-diff-old {
+  background-color: rgba(127, 29, 29, 0.25) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+html.dark .curriculum-diff-old div {
+  color: #fca5a5 !important;
+}
+
+html.dark .curriculum-diff-old pre {
+  color: #fecaca !important;
+}
+
+html.dark .curriculum-diff-new {
+  background-color: rgba(6, 78, 59, 0.28) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+html.dark .curriculum-diff-new div {
+  color: #6ee7b7 !important;
+}
+
+html.dark .curriculum-diff-new pre {
+  color: #d1fae5 !important;
+}
+
+html.dark .curriculum-reasoning-box {
+  background-color: rgba(49, 46, 129, 0.3) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .curriculum-reasoning-box span:first-child {
+  color: #a5b4fc !important;
+}

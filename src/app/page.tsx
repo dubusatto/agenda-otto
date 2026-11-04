@@ -2,9 +2,10 @@ import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { getCalendarEvents, getGoogleTasks, getGoogleTaskLists } from "@/lib/google";
-import { getScheduledTasks, createScheduledTask } from "@/lib/actions";
+import { getScheduledTasks, getCurriculumData } from "@/lib/actions";
 import DashboardClient from "@/components/DashboardClient";
 import ThemeToggle from "@/components/ThemeToggle";
+import CurriculumModal from "@/components/CurriculumModal";
 import { subMonths, addMonths } from "date-fns";
 import { expandScheduledTaskOccurrences } from "@/lib/recurrence";
 
@@ -20,16 +21,21 @@ export default async function Dashboard() {
   const timeMax = addMonths(now, 2).toISOString();
 
   let googleEvents: any[] = [], tasks: any[] = [], taskLists: any[] = [], scheduledTasksData: any[] = [];
+  let curriculumData: any = undefined;
   try {
     if (session.accessToken) {
-      [googleEvents, tasks, taskLists, scheduledTasksData] = await Promise.all([
+      [googleEvents, tasks, taskLists, scheduledTasksData, curriculumData] = await Promise.all([
         getCalendarEvents(session.accessToken, timeMin, timeMax),
         getGoogleTasks(session.accessToken),
         getGoogleTaskLists(session.accessToken),
-        getScheduledTasks()
+        getScheduledTasks(),
+        getCurriculumData()
       ]);
     } else {
-      scheduledTasksData = await getScheduledTasks();
+      [scheduledTasksData, curriculumData] = await Promise.all([
+        getScheduledTasks(),
+        getCurriculumData()
+      ]);
     }
   } catch (err: any) {
     if (err?.message?.includes("Unauthorized") || err?.message?.includes("401")) {
@@ -57,6 +63,7 @@ export default async function Dashboard() {
           <h1 className="text-base lg:text-xl font-bold text-gray-900 tracking-tight">Agenda Edu</h1>
         </div>
         <div className="flex items-center gap-2 lg:gap-3">
+          <CurriculumModal initialData={curriculumData} />
           <ThemeToggle />
           <div className="text-xs lg:text-sm text-gray-600 font-medium bg-gray-50 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border border-gray-200 truncate max-w-[140px] lg:max-w-none">
             {session.user?.name}

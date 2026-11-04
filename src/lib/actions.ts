@@ -4,7 +4,12 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { syncCurriculoMd } from "@/lib/curriculoSync";
+import { syncCurriculoMd, syncOfficialCurriculumMd } from "@/lib/curriculoSync";
+import {
+  applyCurriculumPatch,
+  runCurriculumAnalysisForUser,
+  shouldTriggerAutoAnalysis,
+} from "@/lib/curriculumAi";
 
 export async function createScheduledTask(data: {
   googleTaskId: string;
@@ -857,4 +862,233 @@ export async function adjustScheduledTaskCount(id: string, delta: number) {
 
   await syncCurriculoMd();
   revalidatePath("/");
+}
+
+export async function getCurriculumData() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) {
+    return {
+      document: null,
+      pendingCount: 0,
+      unanalyzedCheckInsCount: 0,
+      shouldAutoAnalyze: false,
+    };
+  }
+
+  try {
+    const userEmail = session.user.email;
+    const document = await prisma.curriculumDocument.findUnique({
+      where: { userEmail },
+      include: {
+        suggestions: {
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    const unanalyzedCheckIns = await prisma.checkIn.findMany({
+      where: {
+        ...(document?.lastAnalyzedAt
+          ? { timestamp: { gt: document.lastAnalyzedAt } }
+          : {}),
+        timeEntry: {
+          taskInstance: {
+            scheduledTask: {
+              userEmail,
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        timestamp: true,
+        note: true,
+      },
+      orderBy: { timestamp: "asc" },
+    });
+
+    const pendingCount =
+      document?.suggestions.filter((s) => s.status === "PENDING").length || 0;
+
+    const shouldAutoAnalyze =
+      Boolean(document && document.content.trim().length > 0) &&
+      shouldTriggerAutoAnalysis(unanalyzedCheckIns, document?.lastAnalyzedAt);
+
+    return {
+      document,
+      pendingCount,
+      unanalyzedCheckInsCount: unanalyzedCheckIns.length,
+      shouldAutoAnalyze,
+    };
+  } catch (err) {
+    console.warn("getCurriculumData fallback:", (err as Error)?.message);
+    return {
+      document: null,
+      pendingCount: 0,
+      unanalyzedCheckInsCount: 0,
+      shouldAutoAnalyze: false,
+    };
+  }
+}
+
+export async function saveCurriculumContent(content: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const userEmail = session.user.email;
+  const existing = await prisma.curriculumDocument.findUnique({
+    where: { userEmail },
+  });
+
+  const previousBackup =
+    existing && existing.content !== content
+      ? existing.content
+      : existing?.previousBackup ?? null;
+
+  const updated = await prisma.curriculumDocument.upsert({
+    where: { userEmail },
+    create: {
+      userEmail,
+      content,
+    },
+    update: {
+      content,
+      previousBackup,
+    },
+  });
+
+  await syncOfficialCurriculumMd(content);
+  revalidatePath("/");
+  return updated;
+}
+
+export async function reviewCurriculumSuggestions(
+  decisions: {
+    id: string;
+    action: "APPROVE" | "REJECT";
+    editedText?: string;
+  }[]
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  if (!decisions || decisions.length === 0) return;
+
+  const userEmail = session.user.email;
+  const doc = await prisma.curriculumDocument.findUnique({
+    where: { userEmail },
+    include: {
+      suggestions: true,
+    },
+  });
+
+  if (!doc) throw new Error("Currículo não encontrado.");
+
+  const suggestionMap = new Map(doc.suggestions.map((s) => [s.id, s]));
+  let updatedContent = doc.content;
+  let hasApproved = false;
+
+  const now = new Date();
+  const txOperations: any[] = [];
+
+  for (const decision of decisions) {
+    const suggestion = suggestionMap.get(decision.id);
+    if (!suggestion) continue;
+
+    if (decision.action === "APPROVE") {
+      const finalSuggestedText =
+        typeof decision.editedText === "string" &&
+        decision.editedText.trim().length > 0
+          ? decision.editedText.trim()
+          : suggestion.suggestedText;
+
+      updatedContent = applyCurriculumPatch(updatedContent, {
+        type: suggestion.type === "REWRITE" ? "REWRITE" : "ADD",
+        sectionTitle: suggestion.sectionTitle,
+        originalText: suggestion.originalText,
+        suggestedText: finalSuggestedText,
+      });
+      hasApproved = true;
+
+      txOperations.push(
+        prisma.curriculumSuggestion.update({
+          where: { id: suggestion.id },
+          data: {
+            status: "APPROVED",
+            suggestedText: finalSuggestedText,
+            resolvedAt: now,
+          },
+        })
+      );
+    } else if (decision.action === "REJECT") {
+      txOperations.push(
+        prisma.curriculumSuggestion.update({
+          where: { id: suggestion.id },
+          data: {
+            status: "REJECTED",
+            resolvedAt: now,
+          },
+        })
+      );
+    }
+  }
+
+  if (hasApproved) {
+    txOperations.push(
+      prisma.curriculumDocument.update({
+        where: { id: doc.id },
+        data: {
+          previousBackup: doc.content,
+          content: updatedContent,
+        },
+      })
+    );
+  }
+
+  if (txOperations.length > 0) {
+    await prisma.$transaction(txOperations);
+  }
+
+  if (hasApproved) {
+    await syncOfficialCurriculumMd(updatedContent);
+  }
+
+  revalidatePath("/");
+  return { content: updatedContent };
+}
+
+export async function triggerCurriculumAnalysisNow() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const result = await runCurriculumAnalysisForUser(session.user.email);
+  revalidatePath("/");
+  return result;
+}
+
+export async function undoLastCurriculumChange() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) throw new Error("Unauthorized");
+
+  const userEmail = session.user.email;
+  const doc = await prisma.curriculumDocument.findUnique({
+    where: { userEmail },
+  });
+
+  if (!doc || !doc.previousBackup) {
+    throw new Error("Não há versão anterior disponível para desfazer.");
+  }
+
+  const restoredContent = doc.previousBackup;
+  const updated = await prisma.curriculumDocument.update({
+    where: { id: doc.id },
+    data: {
+      content: restoredContent,
+      previousBackup: null,
+    },
+  });
+
+  await syncOfficialCurriculumMd(restoredContent);
+  revalidatePath("/");
+  return updated;
 }

@@ -78,3 +78,29 @@ model Alarm {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+model CurriculumDocument {
+  id             String                 @id @default(cuid())
+  userEmail      String                 @unique
+  content        String                 @db.Text
+  previousBackup String?                @db.Text // Guarda a versão imediatamente anterior para permitir "Desfazer"
+  lastAnalyzedAt DateTime?              // Cursor de timestamp do último CheckIn avaliado pela IA
+  updatedAt      DateTime               @updatedAt
+  createdAt      DateTime               @default(now())
+  suggestions    CurriculumSuggestion[]
+}
+
+model CurriculumSuggestion {
+  id             String             @id @default(cuid())
+  curriculumId   String
+  curriculum     CurriculumDocument @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  type           String             // "REWRITE" | "ADD"
+  sectionTitle   String             // Título da seção no currículo onde a mudança ocorre
+  originalText   String?            @db.Text // Preenchido em REWRITE (trecho exato atual no currículo)
+  suggestedText  String             @db.Text // Novo texto proposto (para substituir originalText ou inserir na seção)
+  reasoning      String             @db.Text // Por que essa entrega é relevante para vagas de Engenharia de Software
+  sourceDates    String             // Ex: "03/11/2026"
+  status         String             @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  createdAt      DateTime           @default(now())
+  resolvedAt     DateTime?
+}
