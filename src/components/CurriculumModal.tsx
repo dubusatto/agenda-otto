@@ -9,6 +9,11 @@ import {
   triggerCurriculumAnalysisNow,
   undoLastCurriculumChange,
 } from "@/lib/actions";
+import {
+  exportCurriculumToPdf,
+  renderCurriculumBodyHtml,
+  CURRICULUM_PDF_STYLES,
+} from "@/lib/curriculumPdf";
 
 export interface CurriculumSuggestionItem {
   id: string;
@@ -63,6 +68,7 @@ export default function CurriculumModal({ initialData }: CurriculumModalProps) {
     initialData?.document?.content ?? ""
   );
   const [isDirty, setIsDirty] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"edit" | "preview">("edit");
 
   // Selection and inline edits for suggestions
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
@@ -516,7 +522,21 @@ export default function CurriculumModal({ initialData }: CurriculumModalProps) {
               </div>
 
               {activeTab === "editor" && (
-                <div className="flex items-center gap-2 py-1.5">
+                <div className="flex items-center gap-2 py-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewMode((prev) =>
+                        prev === "edit" ? "preview" : "edit"
+                      )
+                    }
+                    className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+                    title="Alternar entre edição Markdown e visualização no formato do PDF"
+                  >
+                    {previewMode === "edit"
+                      ? "👁️ Visualizar Formato PDF"
+                      : "✏️ Editar Markdown"}
+                  </button>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -540,6 +560,19 @@ export default function CurriculumModal({ initialData }: CurriculumModalProps) {
                     title="Baixar currículo atualizado em arquivo .md"
                   >
                     📥 Baixar .md
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      exportCurriculumToPdf(
+                        editorContent || documentData?.content || ""
+                      )
+                    }
+                    disabled={!editorContent.trim()}
+                    className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition cursor-pointer shadow-2xs disabled:opacity-40"
+                    title="Gerar PDF formatado no layout oficial do currículo"
+                  >
+                    📄 Exportar PDF
                   </button>
                 </div>
               )}
@@ -850,16 +883,28 @@ export default function CurriculumModal({ initialData }: CurriculumModalProps) {
                     </span>
                   </div>
 
-                  <textarea
-                    value={editorContent}
-                    onChange={(e) => {
-                      setEditorContent(e.target.value);
-                      setIsDirty(true);
-                    }}
-                    placeholder="# Seu Nome&#10;**Engenheiro de Software**&#10;&#10;## Experiência Profissional&#10;- Descreva suas entregas..."
-                    rows={18}
-                    className="w-full flex-1 p-4 rounded-xl border border-gray-300 bg-gray-50 font-mono text-xs sm:text-sm text-gray-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
-                  />
+                  {previewMode === "preview" ? (
+                    <div className="w-full flex-1 p-6 sm:p-10 rounded-xl border border-gray-300 bg-white shadow-inner overflow-y-auto">
+                      <style>{CURRICULUM_PDF_STYLES}</style>
+                      <div
+                        className="cv-preview-root max-w-[210mm] mx-auto"
+                        dangerouslySetInnerHTML={{
+                          __html: renderCurriculumBodyHtml(editorContent),
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <textarea
+                      value={editorContent}
+                      onChange={(e) => {
+                        setEditorContent(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="# Seu Nome&#10;**Engenheiro de Software**&#10;&#10;## Experiência Profissional&#10;- Descreva suas entregas..."
+                      rows={18}
+                      className="w-full flex-1 p-4 rounded-xl border border-gray-300 bg-gray-50 font-mono text-xs sm:text-sm text-gray-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+                    />
+                  )}
 
                   <div className="flex items-center justify-between pt-2">
                     <div className="text-xs text-gray-500">
