@@ -28,7 +28,7 @@ export const CURRICULUM_RESPONSE_SCHEMA = {
         properties: {
           type: { type: "STRING", enum: ["REWRITE", "ADD"] },
           sectionTitle: { type: "STRING" },
-          originalText: { type: "STRING", nullable: true },
+          originalText: { type: "STRING" },
           suggestedText: { type: "STRING" },
           reasoning: { type: "STRING" },
           sourceDates: { type: "STRING" },
@@ -426,8 +426,19 @@ export async function generateCurriculumSuggestions(
 
   const configuredModel = process.env.GEMINI_MODEL?.trim();
   const candidateModels = configuredModel
-    ? [configuredModel, "gemini-3.1-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash"]
-    : ["gemini-3.1-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash"];
+    ? [
+        configuredModel,
+        "gemini-3.1-pro-preview",
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+      ]
+    : [
+        "gemini-3.1-pro-preview",
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+      ];
 
   const uniqueModels = Array.from(new Set(candidateModels));
 
@@ -454,40 +465,60 @@ export async function generateCurriculumSuggestions(
 
   let lastError = "";
   let data: any = null;
+  const cleanKey = apiKey.trim();
+  const isVertexExpressKey = cleanKey.startsWith("AQ.");
 
-  for (const model of uniqueModels) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      model
-    )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const baseUrls = isVertexExpressKey
+    ? [
+        "https://aiplatform.googleapis.com/v1/publishers/google/models",
+        "https://generativelanguage.googleapis.com/v1beta/models",
+      ]
+    : [
+        "https://generativelanguage.googleapis.com/v1beta/models",
+        "https://aiplatform.googleapis.com/v1/publishers/google/models",
+      ];
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: requestBody,
-    });
+  outerLoop: for (const baseUrl of baseUrls) {
+    for (const model of uniqueModels) {
+      const endpoint = `${baseUrl}/${encodeURIComponent(
+        model
+      )}:generateContent?key=${encodeURIComponent(cleanKey)}`;
 
-    if (response.ok) {
-      data = await response.json();
-      break;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": cleanKey,
+        },
+        body: requestBody,
+      });
+
+      if (response.ok) {
+        data = await response.json();
+        break outerLoop;
+      }
+
+      const errorText = await response.text().catch(() => response.statusText);
+      lastError = `(${model} -> HTTP ${response.status}): ${errorText}`;
+
+      if (
+        response.status === 400 ||
+        response.status === 401 ||
+        response.status === 403 ||
+        response.status === 404 ||
+        response.status === 429 ||
+        response.status === 503
+      ) {
+        continue;
+      }
+
+      throw new Error(`Falha na chamada ao Gemini ${lastError}`);
     }
-
-    const errorText = await response.text().catch(() => response.statusText);
-    lastError = `(${model} -> ${response.status}): ${errorText}`;
-
-    // Se o modelo não existir na conta (404) ou atingir limite de cota do tier (429), tenta o próximo da fila
-    if (response.status === 404 || response.status === 429) {
-      continue;
-    }
-
-    throw new Error(`Falha na chamada ao Gemini ${lastError}`);
   }
 
   if (!data) {
     throw new Error(
-      `Falha na chamada ao Gemini em todos os modelos tentados. Último erro: ${lastError}`
+      `Falha na chamada ao Gemini. Detalhe: ${lastError}`
     );
   }
   const rawText =

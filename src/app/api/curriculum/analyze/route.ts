@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { runCurriculumAnalysisForUser } from "@/lib/curriculumAi";
 
+export const maxDuration = 60;
+
 async function handleAnalyzeRequest(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");

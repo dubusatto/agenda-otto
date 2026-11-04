@@ -188,7 +188,17 @@ export default function CurriculumModal({ initialData }: CurriculumModalProps) {
     setFeedback(null);
     setIsAnalyzing(true);
     try {
-      const result = await triggerCurriculumAnalysisNow();
+      const response = await fetch("/api/curriculum/analyze", {
+        method: "POST",
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error || `Erro HTTP ${response.status} ao analisar currículo.`
+        );
+      }
+
       await refreshData();
       router.refresh();
 
@@ -201,9 +211,10 @@ export default function CurriculumModal({ initialData }: CurriculumModalProps) {
       } else if (result.suggestionsCreated === 0) {
         setFeedback({
           type: "info",
-          message: `✅ ${result.checkInsEvaluated} check-in(s) avaliado(s) pelo Gemini Pro. Nenhuma mudança estrutural foi necessária para o currículo.`,
+          message: `✅ ${result.checkInsEvaluated} check-in(s) avaliado(s) pelo Gemini. Nenhuma mudança estrutural foi necessária para o currículo.`,
         });
       } else {
+        setActiveTab("suggestions");
         setFeedback({
           type: "success",
           message: `✨ Análise concluída! ${result.suggestionsCreated} nova(s) sugestão(ões) gerada(s) a partir de ${result.checkInsEvaluated} check-in(s).`,
@@ -214,7 +225,7 @@ export default function CurriculumModal({ initialData }: CurriculumModalProps) {
         type: "error",
         message:
           err?.message ||
-          "Erro ao executar análise com o Gemini. Verifique a GEMINI_API_KEY no .env.",
+          "Erro ao executar análise com o Gemini. Verifique a GEMINI_API_KEY na Vercel.",
       });
     } finally {
       setIsAnalyzing(false);
