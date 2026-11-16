@@ -3,6 +3,8 @@ import {
   calculateCheckInIntervals,
   canApplyLunchDiscount,
   calculateTaskAccumulatedTime,
+  isStaleTimeEntry,
+  resolveStaleTimeEntryEndTime,
 } from './timetracking';
 
 describe('Seam 1: Time Tracking, Check-ins & Lunch Discount (timetracking.ts)', () => {
@@ -116,5 +118,80 @@ describe('Seam 1: Time Tracking, Check-ins & Lunch Discount (timetracking.ts)', 
     expect(summary.pastTimeMs).toBe(120 * 60 * 1000);
     expect(summary.lunchDiscountMs).toBe(60 * 60 * 1000);
     expect(summary.totalElapsedMs).toBe(150 * 60 * 1000);
+  });
+
+  it('keeps same-day open sessions running freely past scheduled duration (stopwatch mode)', () => {
+    const startTime = '2026-11-13T17:00:00.000Z'; // 14:00 BRT
+    const sameDayLater = new Date('2026-11-13T19:15:00.000Z'); // 16:15 BRT (2h15m later)
+    const thirtyMinMs = 30 * 60 * 1000;
+
+    expect(isStaleTimeEntry(startTime, sameDayLater)).toBe(false);
+
+    const summary = calculateTaskAccumulatedTime(
+      [{ id: 'te-linkedin', startTime, endTime: null, checkins: [] }],
+      sameDayLater,
+      thirtyMinMs
+    );
+
+    expect(summary.activeEntry?.id).toBe('te-linkedin');
+    expect(summary.totalElapsedMs).toBe(135 * 60 * 1000); // Full 2h15m elapsed
+  });
+
+  it('auto-closes forgotten previous-day session at latest check-in timestamp when check-ins exist', () => {
+    const fridayStart = '2026-11-13T11:00:00.000Z'; // Friday 08:00 BRT
+    const fridayCheckIn1 = '2026-11-13T15:00:00.000Z'; // Friday 12:00 BRT
+    const fridayCheckIn2 = '2026-11-13T20:30:00.000Z'; // Friday 17:30 BRT (9h30m after start)
+    const mondayMorning = new Date('2026-11-16T11:00:00.000Z'); // Monday 08:00 BRT
+
+    const staleEntry = {
+      id: 'te-friday-work',
+      startTime: fridayStart,
+      endTime: null,
+      checkins: [
+        { id: 'c1', note: 'Morning tasks', timestamp: fridayCheckIn1 },
+        { id: 'c2', note: 'Afternoon tasks', timestamp: fridayCheckIn2 },
+      ],
+    };
+
+    expect(isStaleTimeEntry(fridayStart, mondayMorning)).toBe(true);
+    expect(resolveStaleTimeEntryEndTime(staleEntry, 8 * 60 * 60 * 1000).toISOString()).toBe(
+      fridayCheckIn2
+    );
+
+    const summary = calculateTaskAccumulatedTime(
+      [staleEntry],
+      mondayMorning,
+      8 * 60 * 60 * 1000
+    );
+
+    expect(summary.activeEntry).toBeUndefined();
+    expect(summary.pastTimeMs).toBe(9.5 * 60 * 60 * 1000); // 9h30m, NOT 72h
+    expect(summary.totalElapsedMs).toBe(9.5 * 60 * 60 * 1000);
+  });
+
+  it('auto-closes forgotten previous-day session without check-ins using the task scheduled duration', () => {
+    const fridayStart = '2026-11-13T17:00:00.000Z'; // Friday 14:00 BRT
+    const mondayMorning = new Date('2026-11-16T11:00:00.000Z'); // Monday 08:00 BRT
+    const thirtyMinMs = 30 * 60 * 1000;
+
+    const staleEntryNoCheckins = {
+      id: 'te-linkedin-forgotten',
+      startTime: fridayStart,
+      endTime: null,
+      checkins: [],
+    };
+
+    const resolvedEnd = resolveStaleTimeEntryEndTime(staleEntryNoCheckins, thirtyMinMs);
+    expect(resolvedEnd.toISOString()).toBe('2026-11-13T17:30:00.000Z');
+
+    const summary = calculateTaskAccumulatedTime(
+      [staleEntryNoCheckins],
+      mondayMorning,
+      thirtyMinMs
+    );
+
+    expect(summary.activeEntry).toBeUndefined();
+    expect(summary.pastTimeMs).toBe(thirtyMinMs);
+    expect(summary.totalElapsedMs).toBe(thirtyMinMs);
   });
 });

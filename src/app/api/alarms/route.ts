@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { autoCloseStaleTimeEntries } from "@/lib/actions";
 
 // Armazena temporariamente disparos de teste em memória
 let pendingTestAlarm: {
@@ -47,6 +48,8 @@ export async function GET(request: Request) {
   if (userEmail) {
     whereClause.userEmail = userEmail;
   }
+
+  await autoCloseStaleTimeEntries(userEmail);
 
   const [alarms, checkInCount, latestCheckIn, lunchDiscountCount, completedInstancesCount, counterAgg] = await Promise.all([
     prisma.alarm.findMany({

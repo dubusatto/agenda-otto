@@ -18,6 +18,61 @@ export interface ComputedCheckIn extends RawCheckIn {
 }
 
 export const ONE_HOUR_MS = 60 * 60 * 1000;
+export const DEFAULT_FALLBACK_DURATION_MS = 30 * 60 * 1000;
+export const DEFAULT_TIMEZONE = "America/Sao_Paulo";
+
+export function getDateKeyInTimeZone(
+  date: string | Date,
+  timeZone: string = DEFAULT_TIMEZONE
+): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(date));
+}
+
+/**
+ * Returns true if the session started on a previous calendar day (in the user's timezone)
+ * relative to `now`. Sessions on the same calendar day are never considered stale.
+ */
+export function isStaleTimeEntry(
+  startTime: string | Date,
+  now: Date = new Date(),
+  timeZone: string = DEFAULT_TIMEZONE
+): boolean {
+  const startDayKey = getDateKeyInTimeZone(startTime, timeZone);
+  const nowDayKey = getDateKeyInTimeZone(now, timeZone);
+  return startDayKey < nowDayKey;
+}
+
+/**
+ * Computes the retroactive `endTime` for a session that was forgotten open from a previous day:
+ * 1. If the session has check-ins, closes at the timestamp of the latest check-in.
+ * 2. If the session has no check-ins, closes at `startTime + scheduledDurationMs` (fallback: 30m).
+ */
+export function resolveStaleTimeEntryEndTime(
+  entry: RawTimeEntry,
+  scheduledDurationMs?: number
+): Date {
+  const startMs = new Date(entry.startTime).getTime();
+  const checkins = entry.checkins || [];
+
+  if (checkins.length > 0) {
+    const latestCheckInMs = Math.max(
+      ...checkins.map(c => new Date(c.timestamp).getTime())
+    );
+    return new Date(Math.max(startMs, latestCheckInMs));
+  }
+
+  const fallbackDurationMs =
+    typeof scheduledDurationMs === "number" && scheduledDurationMs > 0
+      ? scheduledDurationMs
+      : DEFAULT_FALLBACK_DURATION_MS;
+
+  return new Date(startMs + fallbackDurationMs);
+}
 
 export function calculateCheckInIntervals(entry: RawTimeEntry): ComputedCheckIn[] {
   const startMs = new Date(entry.startTime).getTime();
@@ -71,10 +126,21 @@ export interface TaskAccumulatedTime {
 
 export function calculateTaskAccumulatedTime(
   timeEntries: RawTimeEntry[] = [],
-  now: Date = new Date()
+  now: Date = new Date(),
+  scheduledDurationMs?: number
 ): TaskAccumulatedTime {
-  const activeEntry = timeEntries.find(te => !te.endTime);
-  const pastTimeMs = timeEntries
+  const normalizedEntries = timeEntries.map(te => {
+    if (!te.endTime && isStaleTimeEntry(te.startTime, now)) {
+      return {
+        ...te,
+        endTime: resolveStaleTimeEntryEndTime(te, scheduledDurationMs),
+      };
+    }
+    return te;
+  });
+
+  const activeEntry = normalizedEntries.find(te => !te.endTime);
+  const pastTimeMs = normalizedEntries
     .filter(te => !!te.endTime)
     .reduce((acc, te) => {
       const duration =
@@ -86,7 +152,7 @@ export function calculateTaskAccumulatedTime(
     ? Math.max(0, now.getTime() - new Date(activeEntry.startTime).getTime())
     : 0;
 
-  const lunchDiscountMs = hasTaskLunchDiscount(timeEntries) ? ONE_HOUR_MS : 0;
+  const lunchDiscountMs = hasTaskLunchDiscount(normalizedEntries) ? ONE_HOUR_MS : 0;
   const totalElapsedMs = Math.max(
     0,
     pastTimeMs + activeElapsedMs - lunchDiscountMs

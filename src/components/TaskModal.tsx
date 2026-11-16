@@ -19,6 +19,8 @@ import {
   calculateTaskAccumulatedTime,
   canApplyLunchDiscount,
   hasTaskLunchDiscount,
+  isStaleTimeEntry,
+  resolveStaleTimeEntryEndTime,
 } from "@/lib/timetracking";
 
 const DAYS_MAP = [
@@ -403,11 +405,24 @@ export default function TaskModal({
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Time Tracking (WIP)</label>
                 
                 {(() => {
+                  const scheduledDurationMs = Math.max(
+                    0,
+                    new Date(event.end).getTime() - new Date(event.start).getTime()
+                  );
                   const { pastTimeMs: totalPastTimeMs, activeEntry, lunchDiscountMs } =
-                    calculateTaskAccumulatedTime(event.timeEntries || []);
+                    calculateTaskAccumulatedTime(
+                      event.timeEntries || [],
+                      new Date(),
+                      scheduledDurationMs
+                    );
 
                   const renderEntryHistory = (entry: any, index: number) => {
                     const computedCheckins = calculateCheckInIntervals(entry);
+                    const effectiveEndTime =
+                      entry.endTime ||
+                      (isStaleTimeEntry(entry.startTime)
+                        ? resolveStaleTimeEntryEndTime(entry, scheduledDurationMs)
+                        : null);
                     
                     return (
                       <div key={entry.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
@@ -418,7 +433,7 @@ export default function TaskModal({
                           <span className="text-xs text-gray-500 font-medium">
                             {new Date(entry.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
                             {' -> '} 
-                            {entry.endTime ? new Date(entry.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Em andamento'}
+                            {effectiveEndTime ? new Date(effectiveEndTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Em andamento'}
                           </span>
                         </div>
                         

@@ -10,6 +10,64 @@ import {
   runCurriculumAnalysisForUser,
   shouldTriggerAutoAnalysis,
 } from "@/lib/curriculumAi";
+import {
+  isStaleTimeEntry,
+  resolveStaleTimeEntryEndTime,
+} from "@/lib/timetracking";
+
+export async function autoCloseStaleTimeEntries(userEmail?: string) {
+  const now = new Date();
+  const openEntries = await prisma.timeEntry.findMany({
+    where: {
+      endTime: null,
+      ...(userEmail
+        ? {
+            taskInstance: {
+              scheduledTask: {
+                userEmail,
+              },
+            },
+          }
+        : {}),
+    },
+    include: {
+      checkins: {
+        orderBy: { timestamp: "desc" },
+      },
+      taskInstance: {
+        include: {
+          scheduledTask: {
+            select: { start: true, end: true },
+          },
+        },
+      },
+    },
+  });
+
+  const staleUpdates = openEntries
+    .filter((entry) => isStaleTimeEntry(entry.startTime, now))
+    .map((entry) => {
+      const task = entry.taskInstance.scheduledTask;
+      const scheduledDurationMs = Math.max(
+        0,
+        new Date(task.end).getTime() - new Date(task.start).getTime()
+      );
+      const resolvedEndTime = resolveStaleTimeEntryEndTime(
+        entry,
+        scheduledDurationMs
+      );
+      return prisma.timeEntry.update({
+        where: { id: entry.id },
+        data: { endTime: resolvedEndTime },
+      });
+    });
+
+  if (staleUpdates.length > 0) {
+    await prisma.$transaction(staleUpdates);
+  }
+
+  return staleUpdates.length;
+}
 
 export async function createScheduledTask(data: {
   googleTaskId: string;
@@ -70,6 +128,37 @@ export async function getScheduledTasks() {
       }
     }
   });
+
+  const now = new Date();
+  const staleUpdates: ReturnType<typeof prisma.timeEntry.update>[] = [];
+
+  for (const task of tasks) {
+    const scheduledDurationMs = Math.max(
+      0,
+      new Date(task.end).getTime() - new Date(task.start).getTime()
+    );
+    for (const instance of task.instances) {
+      for (const entry of instance.timeEntries) {
+        if (!entry.endTime && isStaleTimeEntry(entry.startTime, now)) {
+          const resolvedEndTime = resolveStaleTimeEntryEndTime(
+            entry,
+            scheduledDurationMs
+          );
+          entry.endTime = resolvedEndTime;
+          staleUpdates.push(
+            prisma.timeEntry.update({
+              where: { id: entry.id },
+              data: { endTime: resolvedEndTime },
+            })
+          );
+        }
+      }
+    }
+  }
+
+  if (staleUpdates.length > 0) {
+    await prisma.$transaction(staleUpdates);
+  }
 
   return tasks;
 }
@@ -209,6 +298,8 @@ export async function startTimeTracking(id: string) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.email) throw new Error("Unauthorized");
 
+  await autoCloseStaleTimeEntries(session.user.email);
+
   const [baseId, dateString] = id.split('-');
   const task = await prisma.scheduledTask.findUnique({ 
     where: { id: baseId },
@@ -271,13 +362,32 @@ export async function stopTimeTracking(id: string) {
   if (taskInstanceId) {
     const activeEntry = await prisma.timeEntry.findFirst({
       where: { taskInstanceId, endTime: null },
+      include: {
+        checkins: { orderBy: { timestamp: 'desc' } },
+        taskInstance: {
+          include: {
+            scheduledTask: { select: { start: true, end: true } }
+          }
+        }
+      },
       orderBy: { startTime: 'desc' }
     });
 
     if (activeEntry) {
+      const now = new Date();
+      let endTime = now;
+      if (isStaleTimeEntry(activeEntry.startTime, now)) {
+        const task = activeEntry.taskInstance.scheduledTask;
+        const scheduledDurationMs = Math.max(
+          0,
+          new Date(task.end).getTime() - new Date(task.start).getTime()
+        );
+        endTime = resolveStaleTimeEntryEndTime(activeEntry, scheduledDurationMs);
+      }
+
       await prisma.timeEntry.update({
         where: { id: activeEntry.id },
-        data: { endTime: new Date() }
+        data: { endTime }
       });
       revalidatePath("/");
     }
