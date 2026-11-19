@@ -74,6 +74,7 @@ export async function createScheduledTask(data: {
   title: string;
   start: Date;
   end: Date;
+  profile?: string;
 }) {
   const session = await getServerSession(authOptions);
   
@@ -90,9 +91,15 @@ export async function createScheduledTask(data: {
   const usedColors = existingTasks.map((t: any) => t.color || getSemanticColor(t.googleTaskId));
   const newColor = getLeastUsedColor(usedColors);
 
+  const normalizedProfile = (data.profile || "Trabalho").trim() || "Trabalho";
+
   const task = await prisma.scheduledTask.create({
     data: {
-      ...data,
+      googleTaskId: data.googleTaskId,
+      title: data.title,
+      start: data.start,
+      end: data.end,
+      profile: normalizedProfile,
       color: newColor,
       userEmail: session.user.email,
     }
@@ -100,6 +107,75 @@ export async function createScheduledTask(data: {
 
   revalidatePath("/");
   return task;
+}
+
+export async function updateScheduledTaskProfile(id: string, profile: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) {
+    throw new Error("Unauthorized");
+  }
+
+  const baseId = id.split("-")[0];
+  const task = await prisma.scheduledTask.findUnique({ where: { id: baseId } });
+  if (!task || task.userEmail !== session.user.email) {
+    throw new Error("Unauthorized");
+  }
+
+  const normalizedProfile = profile.trim() || "Trabalho";
+  const updated = await prisma.scheduledTask.update({
+    where: { id: baseId },
+    data: { profile: normalizedProfile },
+  });
+
+  revalidatePath("/");
+  return updated;
+}
+
+export async function getCalendarProfiles() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) {
+    return [];
+  }
+
+  return prisma.calendarProfile.findMany({
+    where: { userEmail: session.user.email },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export async function createCalendarProfile(
+  name: string,
+  icon = "📌",
+  color = "#3b82f6"
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) {
+    throw new Error("Unauthorized");
+  }
+
+  const cleanName = name.trim();
+  if (!cleanName) {
+    throw new Error("Nome do perfil não pode ser vazio.");
+  }
+
+  const created = await prisma.calendarProfile.upsert({
+    where: {
+      userEmail_name: {
+        userEmail: session.user.email,
+        name: cleanName,
+      },
+    },
+    create: {
+      name: cleanName,
+      icon: icon || "📌",
+      color: color || "#3b82f6",
+      userEmail: session.user.email,
+    },
+    update: {},
+  });
+
+  revalidatePath("/");
+  return created;
 }
 
 export async function getScheduledTasks() {

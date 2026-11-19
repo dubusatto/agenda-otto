@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { getCalendarEvents, getGoogleTasks, getGoogleTaskLists } from "@/lib/google";
-import { getScheduledTasks, getCurriculumData } from "@/lib/actions";
+import { getScheduledTasks, getCurriculumData, getCalendarProfiles } from "@/lib/actions";
 import DashboardClient from "@/components/DashboardClient";
 import ThemeToggle from "@/components/ThemeToggle";
 import CurriculumModal from "@/components/CurriculumModal";
@@ -21,20 +21,23 @@ export default async function Dashboard() {
   const timeMax = addMonths(now, 2).toISOString();
 
   let googleEvents: any[] = [], tasks: any[] = [], taskLists: any[] = [], scheduledTasksData: any[] = [];
+  let customProfiles: any[] = [];
   let curriculumData: any = undefined;
   try {
     if (session.accessToken) {
-      [googleEvents, tasks, taskLists, scheduledTasksData, curriculumData] = await Promise.all([
+      [googleEvents, tasks, taskLists, scheduledTasksData, curriculumData, customProfiles] = await Promise.all([
         getCalendarEvents(session.accessToken, timeMin, timeMax),
         getGoogleTasks(session.accessToken),
         getGoogleTaskLists(session.accessToken),
         getScheduledTasks(),
-        getCurriculumData()
+        getCurriculumData(),
+        getCalendarProfiles()
       ]);
     } else {
-      [scheduledTasksData, curriculumData] = await Promise.all([
+      [scheduledTasksData, curriculumData, customProfiles] = await Promise.all([
         getScheduledTasks(),
-        getCurriculumData()
+        getCurriculumData(),
+        getCalendarProfiles()
       ]);
     }
   } catch (err: any) {
@@ -72,7 +75,13 @@ export default async function Dashboard() {
       </header>
       
       {/* Client-side Drag and Drop wrapper */}
-      <DashboardClient initialEvents={allEvents} tasks={tasks} taskLists={taskLists} localTasks={scheduledTasksData} />
+      <DashboardClient
+        initialEvents={allEvents}
+        tasks={tasks}
+        taskLists={taskLists}
+        localTasks={scheduledTasksData}
+        customProfiles={customProfiles}
+      />
     </div>
   );
 }

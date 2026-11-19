@@ -12,16 +12,19 @@ export default function DashboardClient({
   initialEvents, 
   tasks,
   taskLists,
-  localTasks = []
+  localTasks = [],
+  customProfiles = []
 }: { 
   initialEvents: CalendarEvent[], 
   tasks: GoogleTask[],
   taskLists: TaskList[],
-  localTasks?: any[]
+  localTasks?: any[],
+  customProfiles?: { id?: string; name: string; icon?: string; color?: string }[]
 }) {
   const dndId = useId();
   const router = useRouter();
   const [activeTask, setActiveTask] = useState<GoogleTask | null>(null);
+  const [defaultCreateProfile, setDefaultCreateProfile] = useState<string>("Trabalho");
   const lastRefreshRef = useRef<number>(0);
 
   // Verifica se há alguma sessão de trabalho em andamento (cronômetro rodando)
@@ -95,7 +98,8 @@ export default function DashboardClient({
             googleTaskId: task.id,
             title: task.title,
             start: startTime,
-            end: endTime
+            end: endTime,
+            profile: defaultCreateProfile,
           });
         } catch (e) {
           console.error("Failed to create scheduled task", e);
@@ -119,7 +123,11 @@ export default function DashboardClient({
       <main className="flex-1 overflow-hidden flex relative z-10">
         <div className="app-main-container flex-1 p-2 pb-15 lg:p-6 overflow-hidden">
           <div className="app-calendar-card bg-white rounded-xl shadow-sm border border-gray-200 w-full h-full p-2 lg:p-4">
-            <CalendarGrid events={initialEvents} />
+            <CalendarGrid
+              events={initialEvents}
+              customProfiles={customProfiles}
+              onDefaultProfileChange={setDefaultCreateProfile}
+            />
           </div>
         </div>
         <Sidebar tasks={tasks} taskLists={taskLists} localTasks={localTasks} />

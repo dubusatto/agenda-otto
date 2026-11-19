@@ -1,19 +1,31 @@
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { createScheduledTask, createGoogleTask } from '@/lib/actions';
+import { DEFAULT_PROFILES, ProfileOption } from '@/lib/profiles';
 
 export default function CreateTaskModal({ 
   isOpen, 
   onClose, 
   start, 
-  end 
+  end,
+  profiles = DEFAULT_PROFILES,
+  defaultProfile = 'Trabalho'
 }: { 
   isOpen: boolean, 
   onClose: () => void, 
   start: Date | null, 
-  end: Date | null 
+  end: Date | null,
+  profiles?: ProfileOption[],
+  defaultProfile?: string
 }) {
   const [title, setTitle] = useState('');
+  const [profile, setProfile] = useState(defaultProfile);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (isOpen) {
+      setProfile(defaultProfile || 'Trabalho');
+    }
+  }, [isOpen, defaultProfile]);
 
   if (!isOpen || !start || !end) return null;
 
@@ -25,12 +37,13 @@ export default function CreateTaskModal({
       try {
         // 1. Create in Google Tasks
         const gTask = await createGoogleTask(title.trim());
-        // 2. Schedule it immediately in our local DB
+        // 2. Schedule it immediately in our local DB with chosen profile
         await createScheduledTask({
           googleTaskId: gTask.id,
           title: gTask.title,
           start,
-          end
+          end,
+          profile,
         });
         setTitle('');
         onClose();
@@ -62,6 +75,36 @@ export default function CreateTaskModal({
               className="w-full border border-gray-300 text-gray-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isPending}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Perfil</label>
+            <div className="flex flex-wrap gap-1.5">
+              {profiles.map((prof) => {
+                const isSelected = profile.toLowerCase() === prof.name.toLowerCase();
+                return (
+                  <button
+                    key={prof.name}
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => setProfile(prof.name)}
+                    style={
+                      isSelected
+                        ? { backgroundColor: prof.color, borderColor: prof.color, color: '#ffffff' }
+                        : undefined
+                    }
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition inline-flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'shadow-xs'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>{prof.icon}</span>
+                    <span>{prof.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           
           <div className="pt-4 flex justify-end gap-3">

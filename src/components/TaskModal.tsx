@@ -12,8 +12,10 @@ import {
   deleteCheckIn,
   toggleCheckInLunchDiscount,
   toggleScheduledTaskCounterMode,
-  setScheduledTaskCount
+  setScheduledTaskCount,
+  updateScheduledTaskProfile
 } from "@/lib/actions";
+import { DEFAULT_PROFILES, ProfileOption, normalizeProfileName } from "@/lib/profiles";
 import {
   calculateCheckInIntervals,
   calculateTaskAccumulatedTime,
@@ -90,11 +92,13 @@ export default function TaskModal({
   isOpen, 
   onClose, 
   event,
+  profiles = DEFAULT_PROFILES,
   onOptimisticUpdate
 }: { 
   isOpen: boolean, 
   onClose: () => void, 
   event: CalendarEvent | null,
+  profiles?: ProfileOption[],
   onOptimisticUpdate?: (eventId: string, patch: Partial<CalendarEvent>) => void
 }) {
   const [isPending, startTransition] = useTransition();
@@ -105,6 +109,7 @@ export default function TaskModal({
   const [localCount, setLocalCount] = useState<number>(0);
   const [localTotalCount, setLocalTotalCount] = useState<number>(0);
   const [localCompleted, setLocalCompleted] = useState<boolean>(false);
+  const [localProfile, setLocalProfile] = useState<string>("Trabalho");
   const countDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Sync state when modal opens
@@ -114,6 +119,7 @@ export default function TaskModal({
       setLocalCount(event.count || 0);
       setLocalTotalCount(event.totalCount || 0);
       setLocalCompleted(!!event.completed);
+      setLocalProfile(normalizeProfileName(event.profile));
     }
     if (event?.rrule) {
       if (event.rrule.includes('FREQ=WEEKLY')) {
@@ -241,7 +247,51 @@ export default function TaskModal({
 
           {isLocal ? (
             <div className="space-y-5">
-              <div className="pt-4">
+              {/* Seletor de Perfil / Categoria direto no card */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Perfil / Categoria
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {profiles.map((prof) => {
+                    const isSelected = localProfile.toLowerCase() === prof.name.toLowerCase();
+                    return (
+                      <button
+                        key={prof.name}
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          if (isSelected) return;
+                          setLocalProfile(prof.name);
+                          onOptimisticUpdate?.(event.id, { profile: prof.name });
+                          startTransition(async () => {
+                            try {
+                              await updateScheduledTaskProfile(event.id, prof.name);
+                            } catch (err) {
+                              console.error("Erro ao atualizar perfil", err);
+                            }
+                          });
+                        }}
+                        style={
+                          isSelected
+                            ? { backgroundColor: prof.color, borderColor: prof.color, color: '#ffffff' }
+                            : undefined
+                        }
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition inline-flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'shadow-xs'
+                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <span>{prof.icon}</span>
+                        <span>{prof.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Recorrência</label>
                 <div className="flex p-1 mb-4 bg-gray-100 rounded-lg">
                   <button 

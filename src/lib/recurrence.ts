@@ -9,6 +9,7 @@ export interface ScheduledTaskInput {
   start: Date;
   end: Date;
   color?: string | null;
+  profile?: string | null;
   completed?: boolean;
   hasCounter?: boolean;
   rrule?: string | null;
@@ -96,6 +97,7 @@ export function expandScheduledTaskOccurrences(
     count: nonRecurringCount,
     totalCount: baseMonthlyCount,
     rrule: st.rrule || undefined,
+    profile: (st.profile || 'Trabalho').trim() || 'Trabalho',
     timeEntries: nonRecurringInstance?.timeEntries || [],
   };
 

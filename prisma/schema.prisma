@@ -16,6 +16,7 @@ model ScheduledTask {
   rrule        String?
   exdates      DateTime[]
   color        String?
+  profile      String   @default("Trabalho")
   completed    Boolean  @default(false)
   hasCounter   Boolean  @default(false)
   userEmail    String
@@ -69,6 +70,7 @@ model Alarm {
   message       String?
   time          String    // Formato "HH:mm", ex: "17:30"
   color         String    @default("#ef4444")
+  profile       String    @default("Trabalho")
   daysOfWeek    Int[]     // ex: [1, 2, 3, 4, 5] para Seg-Sex, vazio se data única
   date          DateTime? // para alarme de dia específico
   enabled       Boolean   @default(true)
@@ -77,6 +79,17 @@ model Alarm {
   userEmail     String
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model CalendarProfile {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String   @default("📌")
+  color     String   @default("#3b82f6")
+  userEmail String
+  createdAt DateTime @default(now())
+
+  @@unique([userEmail, name])
 }
 
 model CurriculumDocument {

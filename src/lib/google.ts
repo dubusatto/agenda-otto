@@ -13,6 +13,7 @@ export interface CalendarEvent {
   count?: number;
   totalCount?: number;
   rrule?: string;
+  profile?: string;
   timeEntries?: any[]; // Keep it simple for now, array of TimeEntry
 }
 

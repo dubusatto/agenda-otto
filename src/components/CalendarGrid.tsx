@@ -11,7 +11,16 @@ import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { useDroppable } from '@dnd-kit/core';
-import { updateScheduledTaskTime } from '@/lib/actions';
+import { updateScheduledTaskTime, createCalendarProfile } from '@/lib/actions';
+import {
+  DEFAULT_PROFILE_NAME,
+  GOOGLE_PROFILE_NAME,
+  ProfileOption,
+  filterEventsByProfiles,
+  getProfileMeta,
+  mergeProfiles,
+  toggleProfileSelection,
+} from '@/lib/profiles';
 import TaskModal from './TaskModal';
 import CreateTaskModal from './CreateTaskModal';
 
@@ -59,8 +68,13 @@ function DateCellWrapper({ children, value }: any) {
   );
 }
 
+const STORAGE_KEY = 'agenda_otto_active_profiles_v1';
+
 function CustomEvent({ event }: any) {
   const showCountBadge = event.hasCounter && (event.count || 0) > 0;
+  const profileMeta = event.calendarId === 'local-db' && event.profile
+    ? getProfileMeta(event.profile)
+    : null;
   return (
     <div className="w-full h-full flex items-start gap-1 overflow-hidden px-1.5 pt-0.5 leading-tight">
       {showCountBadge && (
@@ -71,12 +85,28 @@ function CustomEvent({ event }: any) {
           {event.count}x
         </span>
       )}
+      {profileMeta && profileMeta.name !== DEFAULT_PROFILE_NAME && (
+        <span
+          title={`Perfil: ${profileMeta.name}`}
+          className="shrink-0 text-[10px] leading-none"
+        >
+          {profileMeta.icon}
+        </span>
+      )}
       <span className="font-bold text-[11px] truncate">{event.title}</span>
     </div>
   );
 }
 
-export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
+export default function CalendarGrid({
+  events,
+  customProfiles = [],
+  onDefaultProfileChange,
+}: {
+  events: CalendarEvent[];
+  customProfiles?: Partial<ProfileOption>[];
+  onDefaultProfileChange?: (profile: string) => void;
+}) {
   const router = useRouter();
   const [view, setView] = useState<View>('week');
   const [date, setDate] = useState<Date>(new Date());
@@ -84,12 +114,104 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [newTaskSlot, setNewTaskSlot] = useState<{start: Date, end: Date} | null>(null);
   const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, Partial<CalendarEvent>>>({});
+  const [localAddedProfiles, setLocalAddedProfiles] = useState<ProfileOption[]>([]);
+  const [isAddingProfile, setIsAddingProfile] = useState(false);
+  const [newProfileName, setNewProfileName] = useState('');
+
+  const allProfiles = React.useMemo(() => {
+    const taskProfiles = events
+      .filter((e) => e.calendarId === 'local-db')
+      .map((e) => e.profile);
+    return mergeProfiles([...customProfiles, ...localAddedProfiles], taskProfiles);
+  }, [customProfiles, localAddedProfiles, events]);
+
+  const hasGoogleEvents = React.useMemo(
+    () => events.some((e) => e.calendarId !== 'local-db'),
+    [events]
+  );
+
+  const allFilterNames = React.useMemo(() => {
+    const names = allProfiles.map((p) => p.name);
+    if (hasGoogleEvents) names.push(GOOGLE_PROFILE_NAME);
+    return names;
+  }, [allProfiles, hasGoogleEvents]);
+
+  const [activeProfiles, setActiveProfiles] = useState<string[]>(() => allFilterNames);
+  const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
+
+  // Restore saved profile filter from localStorage
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setActiveProfiles(parsed);
+        }
+      }
+    } catch {
+      // ignore storage errors
+    } finally {
+      setHasLoadedStorage(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!hasLoadedStorage) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(activeProfiles));
+    } catch {
+      // ignore storage errors
+    }
+  }, [activeProfiles, hasLoadedStorage]);
+
+  const defaultCreateProfile = React.useMemo(() => {
+    const activeLocal = activeProfiles.filter((p) => p !== GOOGLE_PROFILE_NAME);
+    if (activeLocal.length === 1) return activeLocal[0];
+    return DEFAULT_PROFILE_NAME;
+  }, [activeProfiles]);
+
+  React.useEffect(() => {
+    onDefaultProfileChange?.(defaultCreateProfile);
+  }, [defaultCreateProfile, onDefaultProfileChange]);
+
+  const isAllSelected = React.useMemo(
+    () => allFilterNames.every((name) => activeProfiles.includes(name)),
+    [allFilterNames, activeProfiles]
+  );
+
+  const handleToggleProfile = (name: string) => {
+    setActiveProfiles((prev) => toggleProfileSelection(prev, name, allFilterNames));
+  };
+
+  const handleSelectAllProfiles = () => {
+    setActiveProfiles(allFilterNames);
+  };
+
+  const handleCreateProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = newProfileName.trim();
+    if (!cleaned) return;
+    setNewProfileName('');
+    setIsAddingProfile(false);
+    setLocalAddedProfiles((prev) => [...prev, { name: cleaned, icon: '📌', color: '#3b82f6' }]);
+    setActiveProfiles((prev) => (prev.includes(cleaned) ? prev : [...prev, cleaned]));
+    startTransition(async () => {
+      try {
+        await createCalendarProfile(cleaned);
+        router.refresh();
+      } catch (err) {
+        console.error('Erro ao criar perfil', err);
+      }
+    });
+  };
 
   const displayEvents = React.useMemo(() => {
-    return events.map(ev =>
+    const withOverrides = events.map(ev =>
       optimisticOverrides[ev.id] ? { ...ev, ...optimisticOverrides[ev.id] } : ev
     );
-  }, [events, optimisticOverrides]);
+    return filterEventsByProfiles(withOverrides, activeProfiles);
+  }, [events, optimisticOverrides, activeProfiles]);
 
   const handleOptimisticEventUpdate = React.useCallback(
     (eventId: string, patch: Partial<CalendarEvent>) => {
@@ -166,7 +288,100 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
   };
 
   return (
-    <div className={`h-full w-full ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
+    <div className={`h-full w-full flex flex-col ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
+      {/* Barra de Perfis / Contextos (multi-seleção) */}
+      <div className="flex items-center gap-1.5 flex-wrap pb-2 mb-2 border-b border-gray-100 shrink-0">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mr-1">
+          Perfis:
+        </span>
+        <button
+          type="button"
+          onClick={handleSelectAllProfiles}
+          className={`px-2.5 py-1 rounded-full text-xs font-semibold transition border ${
+            isAllSelected
+              ? 'bg-gray-900 text-white border-gray-900 shadow-xs'
+              : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+          }`}
+        >
+          Todos
+        </button>
+        {allProfiles.map((prof) => {
+          const isActive = activeProfiles.includes(prof.name);
+          return (
+            <button
+              key={prof.name}
+              type="button"
+              onClick={() => handleToggleProfile(prof.name)}
+              style={
+                isActive
+                  ? { backgroundColor: prof.color, borderColor: prof.color, color: '#ffffff' }
+                  : undefined
+              }
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition border inline-flex items-center gap-1 ${
+                isActive
+                  ? 'shadow-xs'
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 opacity-70'
+              }`}
+            >
+              <span>{prof.icon}</span>
+              <span>{prof.name}</span>
+            </button>
+          );
+        })}
+        {hasGoogleEvents && (
+          <button
+            type="button"
+            onClick={() => handleToggleProfile(GOOGLE_PROFILE_NAME)}
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold transition border inline-flex items-center gap-1 ${
+              activeProfiles.includes(GOOGLE_PROFILE_NAME)
+                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 opacity-70'
+            }`}
+          >
+            <span>🗓️</span>
+            <span>Google</span>
+          </button>
+        )}
+
+        {isAddingProfile ? (
+          <form onSubmit={handleCreateProfile} className="inline-flex items-center gap-1">
+            <input
+              type="text"
+              autoFocus
+              value={newProfileName}
+              onChange={(e) => setNewProfileName(e.target.value)}
+              placeholder="Ex: Saúde"
+              className="px-2 py-0.5 text-xs border border-blue-400 rounded-full w-24 text-gray-800 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-xs font-bold hover:bg-blue-700"
+            >
+              OK
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingProfile(false);
+                setNewProfileName('');
+              }}
+              className="px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsAddingProfile(true)}
+            className="px-2 py-1 rounded-full text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition"
+          >
+            + Perfil
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 min-h-0">
       <DnDCalendar
         localizer={localizer}
         events={displayEvents}
@@ -217,10 +432,12 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
           };
         }}
       />
+      </div>
       <TaskModal 
         isOpen={!!selectedEvent} 
         onClose={() => setSelectedEvent(null)} 
         event={selectedEvent}
+        profiles={allProfiles}
         onOptimisticUpdate={handleOptimisticEventUpdate}
       />
       <CreateTaskModal
@@ -228,6 +445,8 @@ export default function CalendarGrid({ events }: { events: CalendarEvent[] }) {
         onClose={() => setNewTaskSlot(null)}
         start={newTaskSlot?.start || null}
         end={newTaskSlot?.end || null}
+        profiles={allProfiles}
+        defaultProfile={defaultCreateProfile}
       />
 
       {pendingRecurrence && (
